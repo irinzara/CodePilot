@@ -115,7 +115,7 @@
     <svg id="consistencyChart" class="consistency-chart" viewBox="0 0 900 290" preserveAspectRatio="none"></svg>
   </div>
   <div class="section">
-    <div class="section-head"><div><h2>Streak Calendar</h2><div class="subtitle">🔥 completed · 😔 incomplete</div></div><span class="badge">Last 42 days</span></div>
+    <div class="section-head"><div><h2>Streak Calendar</h2><div class="subtitle">🔥 completed · 😔 incomplete</div></div><span class="badge">Last 30 days</span></div>
     <div class="card page-card"><div class="streak-grid" id="analyticsHeat"></div></div>
   </div>
   <div class="section card page-card"><h2>Current Sprint</h2><p class="subtitle" id="analyticsSprint">No active sprint yet.</p><div class="bar"><i id="analyticsBar"></i></div></div>
@@ -334,7 +334,7 @@ function render(){
   }).join('');
 
   var heat='';
-  for(var i=41;i>=0;i--){
+  for(var i=29;i>=0;i--){
     var x=new Date();x.setHours(12,0,0,0);x.setDate(x.getDate()-i);var k=key(x),ok=complete(k);
     heat+='<div class="streak-cell '+(ok?'done':'incomplete')+'" title="'+k+'">'+
       '<span class="emoji">'+(ok?'🔥':'😔')+'</span><small>'+x.toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</small></div>';
