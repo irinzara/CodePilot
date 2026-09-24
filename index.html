@@ -699,10 +699,45 @@ function evaluate(){
   save();render();
 }
 
+function persistRunningTimers(){
+  var changed=false,ids=['py','ai','pr'],nowMs=Date.now();
+  ids.forEach(function(id){
+    var t=timer(id);
+    if(t.running&&t.start){
+      t.elapsed+=Math.max(0,nowMs-t.start);
+      t.start=nowMs;
+      changed=true;
+    }
+  });
+  if(changed)save();
+}
+function pauseTimersForClose(){
+  var changed=false,ids=['py','ai','pr'],nowMs=Date.now();
+  ids.forEach(function(id){
+    var t=timer(id);
+    if(t.running&&t.start){
+      t.elapsed+=Math.max(0,nowMs-t.start);
+      t.running=false;
+      t.start=0;
+      changed=true;
+    }
+  });
+  if(changed)save();
+}
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState==='hidden')persistRunningTimers();
+});
+window.addEventListener('beforeunload',function(){
+  pauseTimersForClose();
+});
 document.addEventListener('DOMContentLoaded',function(){
   render();
   setInterval(function(){
-    if(timer('py').running||timer('ai').running||timer('pr').running)render();
+    var running=timer('py').running||timer('ai').running||timer('pr').running;
+    if(running){
+      persistRunningTimers();
+      render();
+    }
   },1000);
 });
 </script>
