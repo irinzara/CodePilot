@@ -125,7 +125,7 @@
 
 <section id="tests" class="hidden"><div class="top"><div><h1>Weekend Tests</h1><div class="subtitle">External test results feed your mentor evaluation.</div></div><button class="btn primary" onclick="testModal()">+ Add test</button></div><div class="card page-card"><table><thead><tr><th>Date</th><th>Test</th><th>Topic</th><th>Score</th><th>Notes</th></tr></thead><tbody id="testTable"></tbody></table></div></section>
 
-<section id="career" class="hidden"><div class="top"><div><h1>Career Tracker</h1><div class="subtitle">AI · GenAI · Python · ML · AI Software Engineering</div></div><button class="btn primary" onclick="jobModal()">+ Add application</button></div><div class="grid stats"><div class="card stat"><div class="stat-label">Applications</div><div class="stat-value" id="apps">0</div></div><div class="card stat"><div class="stat-label">Interviews</div><div class="stat-value" id="interviews">0</div></div><div class="card stat"><div class="stat-label">Referrals</div><div class="stat-value" id="referrals">0</div></div><div class="card stat"><div class="stat-label">Offers</div><div class="stat-value" id="offers">0</div></div></div><div class="section card page-card"><table><thead><tr><th>Company</th><th>Role</th><th>Priority</th><th>Status</th><th>Date</th><th>Notes</th></tr></thead><tbody id="jobTable"></tbody></table></div></section>
+<section id="career" class="hidden"><div class="top"><div><h1>Career Tracker</h1><div class="subtitle">AI · GenAI · Python · ML · AI Software Engineering</div></div><button class="btn primary" onclick="jobModal()">+ Add application</button></div><div class="grid stats"><div class="card stat"><div class="stat-label">Applications</div><div class="stat-value" id="apps">0</div></div><div class="card stat"><div class="stat-label">Interviews</div><div class="stat-value" id="interviews">0</div></div><div class="card stat"><div class="stat-label">Referrals</div><div class="stat-value" id="referrals">0</div></div><div class="card stat"><div class="stat-label">Offers</div><div class="stat-value" id="offers">0</div></div></div><div class="section card page-card"><table><thead><tr><th>Company</th><th>Role</th><th>Priority</th><th>Status</th><th>Applied</th><th>Interview</th><th>Notes</th><th>Action</th></tr></thead><tbody id="jobTable"></tbody></table></div></section>
 
 <section id="reports" class="hidden"><div class="top"><div><h1>Mentor Reports</h1><div class="subtitle">Weekly execution + learning + project + evidence.</div></div><button class="btn primary" onclick="evaluate()">Evaluate week</button></div><div class="card page-card" id="report"><span class="subtitle">Complete the sprint and add weekend test results, then evaluate.</span></div></section>
 
@@ -362,9 +362,9 @@ function render(){
     return '<tr><td>'+t.date+'</td><td>'+t.name+'</td><td>'+t.topic+'</td><td><b>'+t.score+'%</b></td><td>'+t.notes+'</td></tr>';
   }).join(''):'<tr><td colspan="5">No tests yet.</td></tr>';
 
-  $('jobTable').innerHTML=S.jobs.length?S.jobs.map(function(j){
-    return '<tr><td><b>'+j.c+'</b></td><td>'+j.r+'</td><td>'+j.p+'</td><td>'+j.s+'</td><td>'+j.d+'</td><td>'+j.n+'</td></tr>';
-  }).join(''):'<tr><td colspan="6">No applications yet.</td></tr>';
+  $('jobTable').innerHTML=S.jobs.length?S.jobs.map(function(j,i){
+    return '<tr><td><b>'+j.c+'</b></td><td>'+j.r+'</td><td>'+j.p+'</td><td>'+j.s+'</td><td>'+j.d+'</td><td>'+(j.interviewDate||'—')+'</td><td>'+j.n+'</td><td><button class="btn ghost" style="padding:6px 9px;font-size:10px" onclick="editJob('+i+')">Edit</button></td></tr>';
+  }).join(''):'<tr><td colspan="8">No applications yet.</td></tr>';
 
   $('apps').textContent=S.jobs.length;
   $('interviews').textContent=S.jobs.filter(function(j){return /Interview/i.test(j.s)}).length;
@@ -423,9 +423,28 @@ function testModal(){
 }
 function saveTest(){S.tests.push({date:$('td').value,name:$('tn').value||'External test',topic:$('tt').value||'General',score:+$('ts').value||0,notes:$('tx').value||''});save();closeModal();render()}
 function jobModal(){
-  modal('<h2>Add Application</h2><div class="row"><div class="field"><label>Company</label><input class="input" id="jc"></div><div class="field"><label>Role</label><input class="input" id="jr"></div></div><div class="row"><div class="field"><label>Priority</label><select class="input" id="jp"><option>High</option><option>Medium</option><option>Stretch</option></select></div><div class="field"><label>Status</label><select class="input" id="js"><option>Applied</option><option>Shortlisted</option><option>Assessment</option><option>Interview</option><option>Offer</option><option>Rejected</option></select></div></div><div class="field"><label>Notes</label><textarea id="jn" rows="3"></textarea></div><div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveJob()">Save</button></div>');
+  modal('<h2>Add Application</h2><div class="row"><div class="field"><label>Company</label><input class="input" id="jc"></div><div class="field"><label>Role</label><input class="input" id="jr"></div></div><div class="row"><div class="field"><label>Priority</label><select class="input" id="jp"><option>High</option><option>Medium</option><option>Stretch</option></select></div><div class="field"><label>Status</label><select class="input" id="js"><option>Applied</option><option>Shortlisted</option><option>Assessment</option><option>Interview</option><option>Offer</option><option>Rejected</option></select></div><div class="row"><div class="field"><label>Interview date <span style="font-weight:500">(optional)</span></label><input class="input" id="ji" type="date"></div><div class="field"><label>Referral</label><select class="input" id="jref"><option value="false">No</option><option value="true">Yes</option></select></div></div></div><div class="field"><label>Notes</label><textarea id="jn" rows="3"></textarea></div><div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveJob()">Save</button></div>');
 }
-function saveJob(){S.jobs.push({c:$('jc').value,r:$('jr').value,p:$('jp').value,s:$('js').value,d:TK,n:$('jn').value||'',ref:false});save();closeModal();render()}
+function saveJob(){
+  S.jobs.push({c:$('jc').value,r:$('jr').value,p:$('jp').value,s:$('js').value,d:TK,n:$('jn').value||'',ref:$('jref').value==='true',interviewDate:$('ji').value||''});
+  save();closeModal();render()
+}
+function editJob(i){
+  var j=S.jobs[i];
+  if(!j)return;
+  modal('<h2>Edit Application</h2>'+
+    '<div class="row"><div class="field"><label>Company</label><input class="input" id="ec" value="'+(j.c||'')+'"></div><div class="field"><label>Role</label><input class="input" id="er" value="'+(j.r||'')+'"></div></div>'+
+    '<div class="row"><div class="field"><label>Priority</label><select class="input" id="ep"><option '+(j.p==='High'?'selected':'')+'>High</option><option '+(j.p==='Medium'?'selected':'')+'>Medium</option><option '+(j.p==='Stretch'?'selected':'')+'>Stretch</option></select></div><div class="field"><label>Status</label><select class="input" id="es"><option '+(j.s==='Applied'?'selected':'')+'>Applied</option><option '+(j.s==='Shortlisted'?'selected':'')+'>Shortlisted</option><option '+(j.s==='Assessment'?'selected':'')+'>Assessment</option><option '+(j.s==='Interview'?'selected':'')+'>Interview</option><option '+(j.s==='Offer'?'selected':'')+'>Offer</option><option '+(j.s==='Rejected'?'selected':'')+'>Rejected</option></select></div></div>'+
+    '<div class="row"><div class="field"><label>Interview date <span style="font-weight:500">(optional)</span></label><input class="input" id="ei" type="date" value="'+(j.interviewDate||'')+'"></div><div class="field"><label>Referral</label><select class="input" id="eref"><option value="false" '+(!j.ref?'selected':'')+'>No</option><option value="true" '+(j.ref?'selected':'')+'>Yes</option></select></div></div>'+
+    '<div class="field"><label>Notes</label><textarea id="en" rows="4">'+(j.n||'')+'</textarea></div>'+
+    '<div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="updateJob('+i+')">Save changes</button></div>');
+}
+function updateJob(i){
+  var j=S.jobs[i];if(!j)return;
+  j.c=$('ec').value;j.r=$('er').value;j.p=$('ep').value;j.s=$('es').value;
+  j.interviewDate=$('ei').value||'';j.ref=$('eref').value==='true';j.n=$('en').value||'';
+  save();closeModal();render();
+}
 function evaluate(){
   var ds=dates(),v=ds.filter(function(d){return complete(key(d))}).length,avg=S.tests.length?S.tests.slice(-5).reduce(function(a,b){return a+b.score},0)/Math.min(5,S.tests.length):70;
   var score=Math.round(v*10+avg*.25+(v>=4?20:v>=3?15:v?8:0));
