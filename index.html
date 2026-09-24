@@ -136,7 +136,7 @@
       <div><h2>Daily Study Targets</h2><p class="subtitle">Set the minimum focused time required for each section. Time can exceed these targets.</p></div>
       <span class="badge">Customizable</span>
     </div>
-    <div class="grid three" style="margin-top:22px">
+    <div class="grid" style="margin-top:22px;grid-template-columns:repeat(3,minmax(0,1fr))">
       <div class="card stat"><div class="stat-label">🐍 Python / DSA</div><div class="field"><label>Minimum minutes</label><input class="input" id="setPy" type="number" min="1" max="1440" step="1"></div><div class="stat-small">Current target</div></div>
       <div class="card stat"><div class="stat-label">🧠 AI / ML / GenAI</div><div class="field"><label>Minimum minutes</label><input class="input" id="setAi" type="number" min="1" max="1440" step="1"></div><div class="stat-small">Current target</div></div>
       <div class="card stat"><div class="stat-label">📁 Project</div><div class="field"><label>Minimum minutes</label><input class="input" id="setPr" type="number" min="1" max="1440" step="1"></div><div class="stat-small">Current target</div></div>
