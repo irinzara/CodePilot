@@ -173,6 +173,12 @@ function fmt(ms){
   return pad(h)+':'+pad(m)+':'+pad(s);
 }
 function minOK(id){return elapsed(id)>=H}
+function anyTimerRunning(exceptId){
+  return ['py','ai','pr'].some(function(x){
+    return x!==exceptId && timer(x).running;
+  });
+}
+
 function allOK(){return minOK('py')&&minOK('ai')&&minOK('pr')}
 
 function ring(id,title,icon){
@@ -185,7 +191,7 @@ function ring(id,title,icon){
     '<circle class="ring-progress" style="stroke:'+color+';stroke-dasharray:'+circ+';stroke-dashoffset:'+off+'" cx="70" cy="70" r="58"></circle>'+
     '</svg><div class="ring-center"><div class="ring-time">'+fmt(e)+'</div><div class="ring-min">/ 01:00:00 minimum</div></div></div>'+
     '<div class="ring-actions">'+
-    '<button class="play" onclick="startTimer(\''+id+'\')" '+(t.running?'disabled':'')+'>▶ Play</button>'+
+    '<button class="play" onclick="startTimer(\''+id+'\')" '+(t.running||anyTimerRunning(id)?'disabled':'')+'>'+((t.running||anyTimerRunning(id))?'▶ Play':'▶ Play')+'</button>'+
     '<button class="pause" onclick="stopTimer(\''+id+'\')" '+(!t.running?'disabled':'')+'>Ⅱ Pause</button>'+
     '</div>'+
     '<div class="ring-status '+(minOK(id)?'done':t.running?'running':'')+'">'+(minOK(id)?'✓ Minimum reached':t.running?'● Timer running':'Ready to begin')+'</div>'+
