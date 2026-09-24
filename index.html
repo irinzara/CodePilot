@@ -102,8 +102,8 @@
 </section>
 
 <section id="syllabus" class="hidden">
-  <div class="top"><div><h1>Weekly Syllabus</h1><div class="subtitle">You assign the syllabus. CodePilot distributes it across Monday–Friday.</div></div><button class="btn primary" onclick="syllabusModal()">+ Add syllabus</button></div>
-  <div class="grid two"><div class="card page-card"><h2 id="syTitle">No active syllabus</h2><p class="subtitle" id="syGoal">Start each week by adding what you intend to learn.</p><div class="bar"><i id="syBar"></i></div></div><div class="card page-card"><h2>Mentor note</h2><p class="subtitle">The syllabus you enter is primary. CodePilot can flag scope issues and structure the week, but it does not replace your plan.</p></div></div>
+  <div class="top"><div><h1>Weekly Syllabus</h1><div class="subtitle">You assign the syllabus. CodePilot distributes it across Monday–Friday.</div></div><div style="display:flex;gap:10px"><button class="btn ghost" onclick="editSyllabus()" id="editSyllabusBtn">✎ Edit syllabus</button><button class="btn primary" onclick="syllabusModal()">+ Add syllabus</button></div></div>
+  <div class="grid two"><div class="card page-card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><h2 id="syTitle">No active syllabus</h2><p class="subtitle" id="syGoal">Start each week by adding what you intend to learn.</p></div><span class="badge" id="syStatus">No active sprint</span></div><div class="bar"><i id="syBar"></i></div></div><div class="card page-card"><h2>Mentor note</h2><p class="subtitle">The syllabus you enter is primary. CodePilot can flag scope issues and structure the week, but it does not replace your plan.</p></div></div>
   <div class="section card page-card" id="allocation"></div>
 </section>
 
@@ -342,6 +342,8 @@ function render(){
   $('heat').innerHTML=heat;  if($('analyticsHeat'))$('analyticsHeat').innerHTML=heat;
 
   $('syTitle').textContent=S.sprint&&S.sprint.title?S.sprint.title:'No active syllabus';
+  if($('editSyllabusBtn'))$('editSyllabusBtn').disabled=!S.sprint;
+  if($('syStatus'))$('syStatus').textContent=S.sprint?'Active sprint':'No active sprint';
   $('syGoal').textContent=S.sprint&&S.sprint.goal?S.sprint.goal:'Start each week by adding what you intend to learn.';
   $('syBar').style.width=(verified/5*100)+'%';
   $('analyticsSprint').textContent=S.sprint?S.sprint.title:'No active sprint yet.';
@@ -405,6 +407,27 @@ function submitDay(){
 function modal(html){$('modalBox').innerHTML=html;$('modal').classList.add('on')}
 function closeModal(){$('modal').classList.remove('on')}
 $('modal').onclick=function(e){if(e.target.id==='modal')closeModal()}
+function editSyllabus(){
+  if(!S.sprint){alert('Create a syllabus first.');return}
+  modal('<h2>Edit Weekly Syllabus</h2><p class="subtitle">Update the syllabus and weekly goal. Saving will redistribute the syllabus across Monday–Friday.</p>'+
+    '<div class="field"><label>Sprint title</label><input class="input" id="est" value="'+(S.sprint.title||'')+'"></div>'+
+    '<div class="field"><label>Weekly goal</label><input class="input" id="esg" value="'+(S.sprint.goal||'')+'"></div>'+
+    '<div class="field"><label>Your syllabus</label><textarea id="ess" rows="12">'+(S.sprint.syllabus||'')+'</textarea></div>'+
+    '<div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="updateSyllabus()">Save changes</button></div>');
+}
+function updateSyllabus(){
+  var s=$('ess').value.trim();
+  if(!s){alert('Please provide your syllabus.');return}
+  var lines=s.split(/\n+/).map(function(x){return x.trim()}).filter(Boolean),a={};
+  for(var i=1;i<=5;i++){
+    var c=lines.slice(Math.floor((i-1)*lines.length/5),Math.floor(i*lines.length/5));
+    a[i]={py:c.filter(function(x){return /python|dsa|array|string|stack|queue|tree|algorithm/i.test(x)}).join('; ')||'Python/DSA: assigned syllabus.',ai:c.filter(function(x){return /ai|ml|genai|llm|rag|embedding|transformer|agent|deep learning/i.test(x)}).join('; ')||'AI/ML/GenAI: assigned syllabus.',pr:c.filter(function(x){return /project|fastapi|docker|implement|build|deploy|feature|api|code/i.test(x)}).join('; ')||'Project: assigned deliverable.'};
+  }
+  S.sprint.title=$('est').value||'AI Engineer Weekly Sprint';
+  S.sprint.goal=$('esg').value||'Complete the assigned syllabus and move the project forward.';
+  S.sprint.syllabus=s;S.sprint.allocation=a;
+  save();closeModal();page('syllabus',document.querySelectorAll('#nav button')[1]);
+}
 function syllabusModal(){
   modal('<h2>Add Weekly Syllabus</h2><p class="subtitle">Your syllabus is primary. CodePilot structures it across Monday–Friday.</p><div class="field"><label>Sprint title</label><input class="input" id="st" placeholder="RAG Foundations + SnapSummary"></div><div class="field"><label>Weekly goal</label><input class="input" id="sg" placeholder="What must be true by Friday?"></div><div class="field"><label>Your syllabus</label><textarea id="ss" rows="10" placeholder="Paste Python/DSA, AI/ML/GenAI and project topics..."></textarea></div><div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveSyllabus()">Create sprint</button></div>');
 }
