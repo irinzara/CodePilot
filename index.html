@@ -101,6 +101,20 @@
   </div>
 </section>
 
+<section id="dayreport" class="hidden">
+  <div class="top">
+    <div>
+      <h1 id="dayReportTitle">Daily Learning Report</h1>
+      <div class="subtitle">Study time, assigned topics, remarks and evidence for this day.</div>
+    </div>
+    <div class="report-actions">
+      <button class="btn ghost" id="dayReportBack">← Back</button>
+      <button class="btn primary" id="dayReportEdit">✎ Edit</button>
+    </div>
+  </div>
+  <div id="dayReportContent"></div>
+</section>
+
 <section id="syllabus" class="hidden">
   <div class="top"><div><h1>Weekly Syllabus</h1><div class="subtitle">You assign the syllabus. CodePilot distributes it across Monday–Friday.</div></div><div style="display:flex;gap:10px"><button class="btn ghost" onclick="editSyllabus()" id="editSyllabusBtn">✎ Edit syllabus</button><button class="btn primary" onclick="syllabusModal()">+ Add syllabus</button></div></div>
   <div class="grid two"><div class="card page-card"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start"><div><h2 id="syTitle">No active syllabus</h2><p class="subtitle" id="syGoal">Start each week by adding what you intend to learn.</p></div><span class="badge" id="syStatus">No active sprint</span></div><div class="bar"><i id="syBar"></i></div></div><div class="card page-card"><h2>Mentor note</h2><p class="subtitle">The syllabus you enter is primary. CodePilot can flag scope issues and structure the week, but it does not replace your plan.</p></div></div>
@@ -278,18 +292,31 @@ function topicItems(v){
 function viewDay(k){
   var x=dayInfo(k),label=x.d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'}),t=x.day.timers||{};
   function tm(id){return t[id]&&typeof t[id].elapsed==='number'?fmt(t[id].elapsed):'00:00:00'}
-  function card(title,icon,cls,value,remark){
+  function topicCard(title,icon,cls,value,remark){
     var items=topicItems(value),list=items.length?items.map(function(v){return '<li>'+v+'</li>'}).join(''):'<li>No topics assigned.</li>';
     return '<div class="topic-card '+cls+'"><h3>'+icon+' '+title+'</h3><ul class="topic-list">'+list+'</ul><div style="margin-top:15px"><b>Daily remark</b><div class="report-remark" style="margin-top:7px">'+(remark||'No remark added.')+'</div></div></div>';
   }
-  var docs=x.e.length?x.e.map(function(e){return '<div class="report-file"><div><b>📄 '+e.name+'</b><div class="subtitle">Uploaded '+e.time+'</div></div><span class="badge">'+(e.ok?'VERIFIED':'BROKEN')+'</span></div>'}).join(''):'<div class="report-file"><span class="subtitle">No document uploaded for this day.</span></div>';
-  modal('<div class="report-modal">'+
-    '<div class="report-header"><div><h2 style="margin:0">'+label+'</h2><p class="subtitle">Daily learning report and evidence.</p></div><div class="report-actions"><span class="badge">'+(complete(k)?'✓ Completed':x.day.documentUploaded?'Document uploaded':'Incomplete')+'</span><button class="btn primary" onclick="editDay(\''+k+'\')">✎ Edit</button><button class="btn ghost" onclick="closeModal()">Close</button></div></div>'+
-    '<div class="report-section"><h3>Study Time</h3><div class="report-grid"><div class="report-stat"><div class="stat-label">🐍 Python / DSA</div><div class="stat-value">'+tm('py')+'</div><div class="stat-small">Minimum '+fmt(minMs('py'))+'</div></div><div class="report-stat"><div class="stat-label">🧠 AI / ML / GenAI</div><div class="stat-value">'+tm('ai')+'</div><div class="stat-small">Minimum '+fmt(minMs('ai'))+'</div></div><div class="report-stat"><div class="stat-label">📁 Project</div><div class="stat-value">'+tm('pr')+'</div><div class="stat-small">Minimum '+fmt(minMs('pr'))+'</div></div></div></div>'+
-    '<div class="report-section"><h3>Uploaded Document</h3>'+docs+'</div>'+
-    '<div class="report-section"><h3>Assigned Topics & Remarks</h3><div class="report-grid">'+card('Python / DSA','🐍','py',x.a.py,x.r.py)+card('AI / ML / GenAI','🧠','ai',x.a.ai,x.r.ai)+card('Project','📁','pr',x.a.pr,x.r.pr)+'</div></div>'+
-    '<div class="report-section"><h3>General Remark</h3><div class="report-remark">'+(x.r.remark||'No general remark added.')+'</div></div>'+
-  '</div>');
+  var docs=x.e.length?x.e.map(function(e){return '<div class="report-file"><div><b>📄 '+e.name+'</b><div class="subtitle">Uploaded '+e.time+'</div></div><span class="badge">'+(e.ok?'VERIFIED':'BROKEN')+'</span></div>';}).join(''):'<div class="report-file"><span class="subtitle">No document uploaded for this day.</span></div>';
+  $('dayReportTitle').textContent=label;
+  $('dayReportBack').onclick=function(){page('syllabus',document.querySelectorAll('#nav button')[1])};
+  $('dayReportEdit').onclick=function(){editDay(k)};
+  $('dayReportContent').innerHTML=
+    '<div class="report-section">'+
+      '<div class="report-header"><div><h2 style="margin:0">Daily Learning Report</h2><p class="subtitle">A complete record of this day\'s execution.</p></div><span class="badge">'+(complete(k)?'✓ Completed':x.day.documentUploaded?'Document uploaded':'Incomplete')+'</span></div>'+
+    '</div>'+
+    '<div class="report-section"><h2>Study Time</h2><div class="report-grid">'+
+      '<div class="report-stat"><div class="stat-label">🐍 Python / DSA</div><div class="stat-value">'+tm('py')+'</div><div class="stat-small">Minimum '+fmt(minMs('py'))+'</div></div>'+
+      '<div class="report-stat"><div class="stat-label">🧠 AI / ML / GenAI</div><div class="stat-value">'+tm('ai')+'</div><div class="stat-small">Minimum '+fmt(minMs('ai'))+'</div></div>'+
+      '<div class="report-stat"><div class="stat-label">📁 Project</div><div class="stat-value">'+tm('pr')+'</div><div class="stat-small">Minimum '+fmt(minMs('pr'))+'</div></div>'+
+    '</div></div>'+
+    '<div class="report-section"><h2>Uploaded Document</h2>'+docs+'</div>'+
+    '<div class="report-section"><h2>Assigned Topics & Remarks</h2><div class="report-grid">'+
+      topicCard('Python / DSA','🐍','py',x.a.py,x.r.py)+
+      topicCard('AI / ML / GenAI','🧠','ai',x.a.ai,x.r.ai)+
+      topicCard('Project','📁','pr',x.a.pr,x.r.pr)+
+    '</div></div>'+
+    '<div class="report-section"><h2>General Remark</h2><div class="report-remark">'+(x.r.remark||'No general remark added.')+'</div></div>';
+  page('dayreport');
 }
 function editDay(k){
   var x=dayInfo(k),label=x.d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
