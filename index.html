@@ -120,9 +120,19 @@
 
 <script>
 const KEY='codepilot_v4';
-let legacy=JSON.parse(localStorage.getItem('iry_sprint_v3')||'null');
-let S=JSON.parse(localStorage.getItem(KEY)||'null')||{sprint:legacy?.sprint||null,days:legacy?.days||{},evidence:legacy?.evidence||[],tests:legacy?.tests||[],jobs:legacy?.jobs||[],report:legacy?.report||null};
-S.days??={};S.evidence??=[];S.tests??=[];S.jobs??=[];
+function safeParse(value,fallback){
+  if(!value) return fallback;
+  try{return JSON.parse(value)}catch(err){console.warn('CodePilot storage reset:',err);return fallback}
+}
+const legacy=safeParse(localStorage.getItem('iry_sprint_v3'),null);
+let S=safeParse(localStorage.getItem(KEY),null);
+if(!S || typeof S!=='object' || Array.isArray(S)) S={};
+if(S.sprint===undefined) S.sprint=legacy?.sprint||null;
+if(!S.days || typeof S.days!=='object' || Array.isArray(S.days)) S.days=legacy?.days&&typeof legacy.days==='object'&&!Array.isArray(legacy.days)?legacy.days:{};
+if(!Array.isArray(S.evidence)) S.evidence=Array.isArray(legacy?.evidence)?legacy.evidence:[];
+if(!Array.isArray(S.tests)) S.tests=Array.isArray(legacy?.tests)?legacy.tests:[];
+if(!Array.isArray(S.jobs)) S.jobs=Array.isArray(legacy?.jobs)?legacy.jobs:[];
+if(S.report===undefined) S.report=legacy?.report||null;
 const $=id=>document.getElementById(id),save=()=>localStorage.setItem(KEY,JSON.stringify(S));
 const pad=n=>String(n).padStart(2,'0'),today=new Date(),dayKey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),TK=dayKey(today),H=3600000;
 
@@ -195,7 +205,13 @@ function jobModal(){modal('<h2>Add Application</h2><div class="row"><div class="
 function saveJob(){S.jobs.push({c:$('jc').value,r:$('jr').value,p:$('jp').value,s:$('js').value,d:TK,n:$('jn').value||'',ref:false});save();closeModal();render()}
 function evaluate(){let ds=sprintDates(),v=ds.filter(d=>dayComplete(dayKey(d))).length,avg=S.tests.length?S.tests.slice(-5).reduce((a,b)=>a+b.score,0)/Math.min(5,S.tests.length):70,score=Math.round(v*10+avg*.25+(v>=4?20:v>=3?15:v?8:0));S.report={score,comment:'You verified '+v+'/5 weekdays. '+(S.tests.length?'Recent test average: '+Math.round(avg)+'%.':'No weekend test data yet; evaluation is provisional.'),strength:v>=4?'Strong execution and evidence discipline.':'The daily execution loop is the main bottleneck.',next:v<4?'Reduce scope and rebuild consistency.':'Increase technical difficulty and project depth.'};save();render()}
 setInterval(()=>{if(['py','ai','pr'].some(x=>timer(x).running)){render();}},1000);
-render();
+try{
+  render();
+}catch(err){
+  console.error('CodePilot startup error:',err);
+  const root=document.querySelector('#rings');
+  if(root) root.innerHTML='<div style="padding:30px;text-align:center;color:#6b7280"><b>Dashboard loading issue.</b><br><small>CodePilot recovered the local data state. Please refresh this page once.</small></div>';
+}
 </script>
 </body>
 </html>
