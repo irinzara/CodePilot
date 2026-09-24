@@ -52,7 +52,7 @@
   </div>
 
   <div class="section">
-    <div class="section-head"><div><h2>Today's Focus</h2><div class="subtitle">Complete at least 1 hour in each area to unlock the finish button.</div></div><span class="badge">1h minimum × 3</span></div>
+    <div class="section-head"><div><h2>Today's Focus</h2><div class="subtitle">Complete the configured minimum in each area to unlock the finish button.</div></div><span class="badge">1h minimum × 3</span></div>
     <div class="card focus">
       <div class="rings" id="rings"></div>
       <div class="total-row">
@@ -129,7 +129,28 @@
 
 <section id="reports" class="hidden"><div class="top"><div><h1>Mentor Reports</h1><div class="subtitle">Weekly execution + learning + project + evidence.</div></div><button class="btn primary" onclick="evaluate()">Evaluate week</button></div><div class="card page-card" id="report"><span class="subtitle">Complete the sprint and add weekend test results, then evaluate.</span></div></section>
 
-<section id="settings" class="hidden"><div class="top"><div><h1>Settings</h1><div class="subtitle">CodePilot daily rules.</div></div></div><div class="card page-card"><h2>Daily completion rules</h2><p>Python/DSA, AI/ML/GenAI and Project each require at least 60 minutes.</p><p>Time may exceed one hour. Each category is tracked independently.</p><p>The Finish Day button appears only after all three individual minimums are reached.</p><p>A daily document must be uploaded before 12:00 AM for the day to count toward the streak.</p></div></section>
+<section id="settings" class="hidden">
+  <div class="top"><div><h1>Settings</h1><div class="subtitle">Customize your daily CodePilot study targets.</div></div><button class="btn primary" onclick="saveRules()">Save changes</button></div>
+  <div class="card page-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:20px">
+      <div><h2>Daily Study Targets</h2><p class="subtitle">Set the minimum focused time required for each section. Time can exceed these targets.</p></div>
+      <span class="badge">Customizable</span>
+    </div>
+    <div class="grid three" style="margin-top:22px">
+      <div class="card stat"><div class="stat-label">🐍 Python / DSA</div><div class="field"><label>Minimum minutes</label><input class="input" id="setPy" type="number" min="1" max="1440" step="1"></div><div class="stat-small">Current target</div></div>
+      <div class="card stat"><div class="stat-label">🧠 AI / ML / GenAI</div><div class="field"><label>Minimum minutes</label><input class="input" id="setAi" type="number" min="1" max="1440" step="1"></div><div class="stat-small">Current target</div></div>
+      <div class="card stat"><div class="stat-label">📁 Project</div><div class="field"><label>Minimum minutes</label><input class="input" id="setPr" type="number" min="1" max="1440" step="1"></div><div class="stat-small">Current target</div></div>
+    </div>
+  </div>
+  <div class="card page-card" style="margin-top:18px">
+    <h2>Completion Rules</h2>
+    <p>✓ All three sections must reach their configured minimum.</p>
+    <p>✓ The timer can continue beyond the minimum.</p>
+    <p>✓ Only one timer can run at a time.</p>
+    <p>✓ Daily reports and the uploaded document are required before the day is counted.</p>
+    <p>✓ The daily completion deadline remains <b>12:00 AM</b>.</p>
+  </div>
+</section>
 </main></div>
 
 <div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div><div id="consistencyTip" class="consistency-tip"></div>
@@ -146,6 +167,10 @@ if(!Array.isArray(S.evidence))S.evidence=legacy&&Array.isArray(legacy.evidence)?
 if(!Array.isArray(S.tests))S.tests=legacy&&Array.isArray(legacy.tests)?legacy.tests:[];
 if(!Array.isArray(S.jobs))S.jobs=legacy&&Array.isArray(legacy.jobs)?legacy.jobs:[];
 if(S.report===undefined)S.report=legacy&&legacy.report?legacy.report:null;
+if(S.rules===undefined||!S.rules||typeof S.rules!=='object')S.rules={py:60,ai:60,pr:60};
+if(typeof S.rules.py!=='number'||S.rules.py<1)S.rules.py=60;
+if(typeof S.rules.ai!=='number'||S.rules.ai<1)S.rules.ai=60;
+if(typeof S.rules.pr!=='number'||S.rules.pr<1)S.rules.pr=60;
 
 function $(id){return document.getElementById(id)}
 function save(){localStorage.setItem(KEY,JSON.stringify(S))}
@@ -176,7 +201,9 @@ function fmt(ms){
   s%=60;m%=60;
   return pad(h)+':'+pad(m)+':'+pad(s);
 }
-function minOK(id){return elapsed(id)>=H}
+function minMs(id){return (S.rules[id]||60)*60000}
+function minOK(id){return elapsed(id)>=minMs(id)}
+function configuredTotalMs(){return (S.rules.py+S.rules.ai+S.rules.pr)*60000}
 function anyTimerRunning(exceptId){
   return ['py','ai','pr'].some(function(x){
     return x!==exceptId && timer(x).running;
@@ -186,14 +213,14 @@ function anyTimerRunning(exceptId){
 function allOK(){return minOK('py')&&minOK('ai')&&minOK('pr')}
 
 function ring(id,title,icon){
-  var t=timer(id),e=elapsed(id),p=Math.min(1,e/H),circ=364.42,off=circ*(1-p);
+  var t=timer(id),e=elapsed(id),required=minMs(id),p=Math.min(1,e/required),circ=364.42,off=circ*(1-p);
   var color=id==='py'?'#4d8df7':id==='ai'?'#7c61f5':'#20b887';
   return '<div class="ring-col">'+
     '<div class="ring-title">'+icon+' &nbsp;'+title+'</div>'+
     '<div class="ring"><svg viewBox="0 0 140 140">'+
     '<circle class="ring-bg" cx="70" cy="70" r="58"></circle>'+
     '<circle class="ring-progress" style="stroke:'+color+';stroke-dasharray:'+circ+';stroke-dashoffset:'+off+'" cx="70" cy="70" r="58"></circle>'+
-    '</svg><div class="ring-center"><div class="ring-time">'+fmt(e)+'</div><div class="ring-min">/ 01:00:00 minimum</div></div></div>'+
+    '</svg><div class="ring-center"><div class="ring-time">'+fmt(e)+'</div><div class="ring-min">/ '+fmt(required)+' minimum</div></div></div>'+
     '<div class="ring-actions">'+
     '<button class="play" onclick="startTimer(\''+id+'\')" '+(t.running||anyTimerRunning(id)?'disabled':'')+'>'+((t.running||anyTimerRunning(id))?'▶ Play':'▶ Play')+'</button>'+
     '<button class="pause" onclick="stopTimer(\''+id+'\')" '+(!t.running?'disabled':'')+'>Ⅱ Pause</button>'+
@@ -311,22 +338,24 @@ function render(){
   $('date2').textContent=$('date').textContent;
 
   var total=elapsed('py')+elapsed('ai')+elapsed('pr');
-  $('today').textContent=(total/H).toFixed(1)+' / 3h';
+  $('today').textContent=(total/3600000).toFixed(1)+' / '+(configuredTotalMs()/3600000).toFixed(1)+'h';
   $('streak').textContent=currentStreak()+' days';
 
   var ds=dates(),verified=ds.filter(function(d){return complete(key(d))}).length;
   $('sprintProgress').textContent=verified+'/5';
   $('sprintBar').style.width=(verified/5*100)+'%';
   $('weeklyScore').textContent=S.report?S.report.score+'%':'—';
+  renderSettings();
+  if($('totalMinimum'))$('totalMinimum').textContent='Minimum '+fmt(configuredTotalMs());
 
   renderRings();
   $('totalTime').textContent=fmt(total);
-  $('totalBar').style.width=Math.min(100,total/(3*H)*100)+'%';
+  $('totalBar').style.width=Math.min(100,total/configuredTotalMs()*100)+'%';
   var ready=allOK();
   $('finishBtn').disabled=!ready;
   $('finishBtn').className='finish '+(ready?'ready':'');
   $('finishBtn').textContent=ready?'✓ Finish Day':'🔒 Finish Day';
-  $('finishHint').textContent=ready?'All three minimums reached. Finish when you are ready.':'Complete 1 hour in all three sections.';
+  $('finishHint').textContent=ready?'All three minimums reached. Finish when you are ready.':'Complete the configured minimum in all three sections.';
 
   $('week').innerHTML=ds.map(function(d){
     var k=key(d),ok=complete(k),partial=!!S.days[k];
@@ -427,6 +456,22 @@ function updateSyllabus(){
   S.sprint.goal=$('esg').value||'Complete the assigned syllabus and move the project forward.';
   S.sprint.syllabus=s;S.sprint.allocation=a;
   save();closeModal();page('syllabus',document.querySelectorAll('#nav button')[1]);
+}
+function renderSettings(){
+  if(!$('setPy'))return;
+  $('setPy').value=S.rules.py;
+  $('setAi').value=S.rules.ai;
+  $('setPr').value=S.rules.pr;
+}
+function saveRules(){
+  var py=parseInt($('setPy').value,10),ai=parseInt($('setAi').value,10),pr=parseInt($('setPr').value,10);
+  if(!isFinite(py)||py<1||py>1440||!isFinite(ai)||ai<1||ai>1440||!isFinite(pr)||pr<1||pr>1440){
+    alert('Each minimum must be between 1 and 1440 minutes.');return;
+  }
+  if(timer('py').running||timer('ai').running||timer('pr').running){
+    alert('Pause the active timer before changing daily targets.');return;
+  }
+  S.rules={py:py,ai:ai,pr:pr};save();render();alert('Daily study targets updated.');
 }
 function syllabusModal(){
   modal('<h2>Add Weekly Syllabus</h2><p class="subtitle">Your syllabus is primary. CodePilot structures it across Monday–Friday.</p><div class="field"><label>Sprint title</label><input class="input" id="st" placeholder="RAG Foundations + SnapSummary"></div><div class="field"><label>Weekly goal</label><input class="input" id="sg" placeholder="What must be true by Friday?"></div><div class="field"><label>Your syllabus</label><textarea id="ss" rows="10" placeholder="Paste Python/DSA, AI/ML/GenAI and project topics..."></textarea></div><div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveSyllabus()">Create sprint</button></div>');
