@@ -114,6 +114,10 @@
     <div class="section-head"><div><h2>Learning Consistency</h2><div class="subtitle">Daily completion across the last 30 days.</div></div><span class="badge">Hover a point</span></div>
     <svg id="consistencyChart" class="consistency-chart" viewBox="0 0 900 290" preserveAspectRatio="none"></svg>
   </div>
+  <div class="section">
+    <div class="section-head"><div><h2>Streak Calendar</h2><div class="subtitle">🔥 completed · 😔 incomplete</div></div><span class="badge">Last 42 days</span></div>
+    <div class="card page-card"><div class="streak-grid" id="analyticsHeat"></div></div>
+  </div>
   <div class="section card page-card"><h2>Current Sprint</h2><p class="subtitle" id="analyticsSprint">No active sprint yet.</p><div class="bar"><i id="analyticsBar"></i></div></div>
 </section>
 
@@ -335,7 +339,7 @@ function render(){
     heat+='<div class="streak-cell '+(ok?'done':'incomplete')+'" title="'+k+'">'+
       '<span class="emoji">'+(ok?'🔥':'😔')+'</span><small>'+x.toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</small></div>';
   }
-  $('heat').innerHTML=heat;
+  $('heat').innerHTML=heat;  if($('analyticsHeat'))$('analyticsHeat').innerHTML=heat;
 
   $('syTitle').textContent=S.sprint&&S.sprint.title?S.sprint.title:'No active syllabus';
   $('syGoal').textContent=S.sprint&&S.sprint.goal?S.sprint.goal:'Start each week by adding what you intend to learn.';
