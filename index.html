@@ -216,6 +216,30 @@ function currentStreak(){
   }
   return count;
 }
+function viewDay(k){
+  var d=new Date(k+'T12:00:00');
+  var label=d.toLocaleDateString(undefined,{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  var idx=dates().findIndex(function(x){return key(x)===k;});
+  var a=S.sprint&&S.sprint.allocation&&idx>=0?S.sprint.allocation[idx+1]:null;
+  var e=S.evidence.filter(function(x){return x.date===k;});
+  var day=S.days[k]||{};
+  var t=day.timers||{};
+  function tm(id){return t[id]&&typeof t[id].elapsed==='number'?fmt(t[id].elapsed):'00:00:00'}
+  var syllabus='<div style="display:grid;gap:10px;margin-top:12px">'+
+    '<div class="day"><b>Python / DSA</b><p class="subtitle">'+(a&&a.py?a.py:'No syllabus assigned for this day.')+'</p></div>'+
+    '<div class="day"><b>AI / ML / GenAI</b><p class="subtitle">'+(a&&a.ai?a.ai:'No syllabus assigned for this day.')+'</p></div>'+
+    '<div class="day"><b>Project</b><p class="subtitle">'+(a&&a.pr?a.pr:'No project deliverable assigned for this day.')+'</p></div>'+
+    '</div>';
+  var docs=e.length?e.map(function(x){return '<div class="day"><div style="display:flex;justify-content:space-between;gap:12px"><b>'+x.name+'</b><span class="badge">'+(x.ok?'VERIFIED':'BROKEN')+'</span></div><p class="subtitle">Uploaded: '+x.time+'</p></div>';}).join(''):'<div class="day"><span class="subtitle">No document uploaded for this day.</span></div>';
+  modal('<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:15px"><div><h2 style="margin:0">View '+label+'</h2><p class="subtitle">Daily syllabus, study time and uploaded evidence.</p></div><span class="badge">'+(complete(k)?'Verified':day.documentUploaded?'Document uploaded':'Not completed')+'</span></div>'+
+    '<div class="section"><div class="section-head"><h3 style="margin:0">Assigned Syllabus</h3></div>'+syllabus+'</div>'+
+    '<div class="section"><div class="section-head"><h3 style="margin:0">Study Time</h3></div><div class="grid stats">'+
+      '<div class="card stat"><div class="stat-label">Python / DSA</div><div class="stat-value">'+tm('py')+'</div></div>'+
+      '<div class="card stat"><div class="stat-label">AI / ML</div><div class="stat-value">'+tm('ai')+'</div></div>'+
+      '<div class="card stat"><div class="stat-label">Project</div><div class="stat-value">'+tm('pr')+'</div></div></div></div>'+
+    '<div class="section"><div class="section-head"><h3 style="margin:0">Uploaded Documents</h3></div>'+docs+'</div>'+
+    '<div style="margin-top:20px;text-align:right"><button class="btn ghost" onclick="closeModal()">Close</button></div>');
+}
 function render(){
   var h=new Date().getHours();
   $('greeting').textContent=(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+', Iry!';
@@ -242,7 +266,7 @@ function render(){
 
   $('week').innerHTML=ds.map(function(d){
     var k=key(d),ok=complete(k),partial=!!S.days[k];
-    return '<div class="day"><b>'+d.toLocaleDateString(undefined,{weekday:'short'})+'</b><p><span class="dot '+(ok?'ok':partial?'partial':'')+'"></span>'+(ok?'Verified':partial?'In progress':'Pending')+'</p><small>'+k+'</small></div>';
+    return '<div class="day"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>'+d.toLocaleDateString(undefined,{weekday:'short'})+'</b><button class="btn ghost" style="padding:6px 9px;font-size:10px" onclick="viewDay(\''+k+'\')">View</button></div><p><span class="dot '+(ok?'ok':partial?'partial':'')+'"></span>'+(ok?'Verified':partial?'In progress':'Pending')+'</p><small>'+k+'</small></div>';
   }).join('');
 
   var heat='';
