@@ -129,8 +129,21 @@ const pad=n=>String(n).padStart(2,'0'),today=new Date(),dayKey=d=>d.getFullYear(
 $('date').textContent=today.toLocaleDateString(undefined,{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
 $('date2').textContent=$('date').textContent;
 
-function day(){S.days[TK]??={};S.days[TK].timers??={};return S.days[TK]}
-function timer(id){let d=day();d.timers[id]??={elapsed:0,running:false,start:null};return d.timers[id]}
+function day(){
+  if(!S.days || typeof S.days!=='object' || Array.isArray(S.days)) S.days={};
+  if(!S.days[TK] || typeof S.days[TK]!=='object' || Array.isArray(S.days[TK])) S.days[TK]={};
+  if(!S.days[TK].timers || typeof S.days[TK].timers!=='object' || Array.isArray(S.days[TK].timers)) S.days[TK].timers={};
+  return S.days[TK];
+}
+function timer(id){
+  let d=day();
+  if(!d.timers[id] || typeof d.timers[id]!=='object' || Array.isArray(d.timers[id])) d.timers[id]={elapsed:0,running:false,start:null};
+  let t=d.timers[id];
+  if(typeof t.elapsed!=='number' || !Number.isFinite(t.elapsed)) t.elapsed=0;
+  if(typeof t.running!=='boolean') t.running=false;
+  if(t.start!==null && typeof t.start!=='number') t.start=null;
+  return t;
+}
 function elapsed(id){let t=timer(id);return t.elapsed+(t.running&&t.start?Date.now()-t.start:0)}
 function format(ms){let s=Math.floor(ms/1000),m=Math.floor(s/60),h=Math.floor(m/60);s%=60;m%=60;return pad(h)+':'+pad(m)+':'+pad(s)}
 function minimumReached(id){return elapsed(id)>=H}
@@ -139,7 +152,17 @@ function dayComplete(k){let d=S.days[k];return !!(d?.timers&&['py','ai','pr'].ev
 function streak(){let d=new Date();if(d.getDay()===0)d.setDate(d.getDate()-2);if(d.getDay()===6)d.setDate(d.getDate()-1);let n=0;while(d.getDay()>0&&d.getDay()<6&&dayComplete(dayKey(d))){n++;d.setDate(d.getDate()-1);if(d.getDay()===0)d.setDate(d.getDate()-2)}return n}
 function ringSVG(id,color){let r=58,c=2*Math.PI*r,p=Math.min(1,elapsed(id)/H),offset=c*(1-p);return '<div class="ring"><svg viewBox="0 0 140 140"><circle class="ring-bg" cx="70" cy="70" r="'+r+'"></circle><circle class="ring-progress" style="stroke:'+color+';stroke-dasharray:'+c+';stroke-dashoffset:'+offset+'" cx="70" cy="70" r="'+r+'"></circle></svg><div class="ring-center"><div class="ring-time">'+format(elapsed(id))+'</div><div class="ring-min">/ 01:00:00 minimum</div></div></div>'}
 function ringCard(id,title,color,icon){let t=timer(id),done=minimumReached(id);return '<div class="ring-col"><div class="ring-title">'+icon+' &nbsp;'+title+'</div>'+ringSVG(id,color)+'<div class="ring-actions"><button class="play" onclick="play(''+id+'')" '+(t.running||done?'disabled':'')+'>▶ Play</button><button class="pause" onclick="pause(''+id+'')" '+(!t.running?'disabled':'')+'>Ⅱ Pause</button></div><div class="ring-status '+(done?'done':t.running?'running':'')+'">'+(done?'✓ Minimum reached':t.running?'● Timer running':'Ready to begin')+'</div></div>'}
-function renderRings(){$('rings').innerHTML=ringCard('py','Python','#4d8df7','🐍')+ringCard('ai','AI / ML','#7c61f5','🧠')+ringCard('pr','Project','#20b887','📁')}
+function renderRings(){
+  const cards=[];
+  [['py','Python','#4d8df7','🐍'],['ai','AI / ML','#7c61f5','🧠'],['pr','Project','#20b887','📁']].forEach(x=>{
+    try{ cards.push(ringCard(x[0],x[1],x[2],x[3])); }
+    catch(err){
+      console.error('CodePilot timer card error',err);
+      cards.push('<div class="ring-col"><div class="ring-title">'+x[3]+' &nbsp;'+x[1]+'</div><div class="ring-status">Timer ready — refresh once if needed.</div></div>');
+    }
+  });
+  $('rings').innerHTML=cards.join('');
+}
 function play(id){let t=timer(id);if(t.running)return;t.running=true;t.start=Date.now();save();render()}
 function pause(id){let t=timer(id);if(!t.running)return;t.elapsed+=Date.now()-t.start;t.start=null;t.running=false;save();render()}
 function goToCompletion(){if(!allMinimums())return;S.completionDay=TK;save();page('completion');renderCompletion()}
