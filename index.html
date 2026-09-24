@@ -171,23 +171,62 @@
 
 <script>
 var KEY='codepilot_v4';
+var BACKUP_KEY='codepilot_v4_backup';
 function parseJSON(v,f){try{return v?JSON.parse(v):f}catch(e){return f}}
-var legacy=parseJSON(localStorage.getItem('iry_sprint_v3'),null);
-var S=parseJSON(localStorage.getItem(KEY),null);
-if(!S||typeof S!=='object'||Array.isArray(S))S={};
-if(S.sprint===undefined)S.sprint=legacy&&legacy.sprint?legacy.sprint:null;
-if(!S.days||typeof S.days!=='object'||Array.isArray(S.days))S.days=legacy&&legacy.days&&typeof legacy.days==='object'&&!Array.isArray(legacy.days)?legacy.days:{};
-if(!Array.isArray(S.evidence))S.evidence=legacy&&Array.isArray(legacy.evidence)?legacy.evidence:[];
-if(!Array.isArray(S.tests))S.tests=legacy&&Array.isArray(legacy.tests)?legacy.tests:[];
-if(!Array.isArray(S.jobs))S.jobs=legacy&&Array.isArray(legacy.jobs)?legacy.jobs:[];
-if(S.report===undefined)S.report=legacy&&legacy.report?legacy.report:null;
+function objectState(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:null}
+function mergeArray(primary,legacy){
+  var out=Array.isArray(primary)?primary.slice():[];
+  if(Array.isArray(legacy)) legacy.forEach(function(item){
+    var sig='';
+    try{sig=JSON.stringify(item)}catch(e){sig=String(item)}
+    var exists=out.some(function(x){try{return JSON.stringify(x)===sig}catch(e){return false}});
+    if(!exists)out.push(item);
+  });
+  return out;
+}
+function mergeDays(primary,legacy){
+  var out=objectState(primary)||{};
+  legacy=objectState(legacy)||{};
+  Object.keys(legacy).forEach(function(k){
+    if(!out[k])out[k]=legacy[k];
+    else if(objectState(legacy[k])&&objectState(out[k])){
+      Object.keys(legacy[k]).forEach(function(prop){
+        if(out[k][prop]===undefined)out[k][prop]=legacy[k][prop];
+      });
+    }
+  });
+  return out;
+}
+var storedPrimary=parseJSON(localStorage.getItem(KEY),null);
+var storedBackup=parseJSON(localStorage.getItem(BACKUP_KEY),null);
+var S=objectState(storedPrimary)||objectState(storedBackup)||{};
+var legacyKeys=['iry_sprint_v3','iry_sprint_v2','codepilot_v3','codepilot_v2','iry_sprint'];
+legacyKeys.forEach(function(k){
+  var old=objectState(parseJSON(localStorage.getItem(k),null));
+  if(!old)return;
+  if(S.sprint===undefined&&old.sprint!==undefined)S.sprint=old.sprint;
+  S.days=mergeDays(S.days,old.days);
+  S.evidence=mergeArray(S.evidence,old.evidence);
+  S.tests=mergeArray(S.tests,old.tests);
+  S.jobs=mergeArray(S.jobs,old.jobs);
+  if(S.report===undefined&&old.report!==undefined)S.report=old.report;
+  if(S.rules===undefined&&old.rules!==undefined)S.rules=old.rules;
+});
+if(!S.days||typeof S.days!=='object'||Array.isArray(S.days))S.days={};
+if(!Array.isArray(S.evidence))S.evidence=[];
+if(!Array.isArray(S.tests))S.tests=[];
+if(!Array.isArray(S.jobs))S.jobs=[];
+if(S.report===undefined)S.report=null;
 if(S.rules===undefined||!S.rules||typeof S.rules!=='object')S.rules={py:60,ai:60,pr:60};
 if(typeof S.rules.py!=='number'||S.rules.py<1)S.rules.py=60;
 if(typeof S.rules.ai!=='number'||S.rules.ai<1)S.rules.ai=60;
 if(typeof S.rules.pr!=='number'||S.rules.pr<1)S.rules.pr=60;
-
 function $(id){return document.getElementById(id)}
-function save(){localStorage.setItem(KEY,JSON.stringify(S))}
+function save(){
+  var payload=JSON.stringify(S);
+  try{localStorage.setItem(KEY,payload);localStorage.setItem(BACKUP_KEY,payload)}
+  catch(e){console.error('CodePilot storage error:',e);alert('CodePilot could not save your data in this browser. Please make sure site storage is enabled.')}
+}
 function pad(n){return String(n).padStart(2,'0')}
 function key(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 var now=new Date(), TK=key(now), H=3600000;
