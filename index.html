@@ -80,6 +80,14 @@
         <div class="card stat"><div class="stat-label">Project</div><div class="stat-value" id="cr">01:00:00</div><div class="stat-small">Minimum reached</div></div>
         <div class="card stat"><div class="stat-label">Total</div><div class="stat-value" id="ct">03:00:00</div><div class="stat-small">Today's study time</div></div>
       </div>
+      <div class="section" style="max-width:800px;margin:24px auto 0;text-align:left">
+        <h3 style="margin:0 0 5px">Daily Learning Report</h3>
+        <p class="subtitle" style="margin-bottom:14px">Write what you actually learned or completed today in each area.</p>
+        <div class="field"><label>🐍 Python / DSA Report</label><textarea id="reportPy" rows="4" placeholder="What did you learn, practice, or solve?"></textarea></div>
+        <div class="field"><label>🧠 AI / ML / GenAI Report</label><textarea id="reportAi" rows="4" placeholder="What concepts did you learn or understand today?"></textarea></div>
+        <div class="field"><label>📁 Project Report</label><textarea id="reportPr" rows="4" placeholder="What did you build, change, debug, or complete?"></textarea></div>
+        <div class="field"><label>💬 General Remark <span style="font-weight:500">(optional)</span></label><textarea id="reportRemark" rows="3" placeholder="Anything else about today's progress, difficulty, or focus..."></textarea></div>
+      </div>
       <div class="upload-box">
         <div class="icon">📄</div>
         <h3>Upload Daily Document</h3>
@@ -231,12 +239,20 @@ function viewDay(k){
     '<div class="day"><b>Project</b><p class="subtitle">'+(a&&a.pr?a.pr:'No project deliverable assigned for this day.')+'</p></div>'+
     '</div>';
   var docs=e.length?e.map(function(x){return '<div class="day"><div style="display:flex;justify-content:space-between;gap:12px"><b>'+x.name+'</b><span class="badge">'+(x.ok?'VERIFIED':'BROKEN')+'</span></div><p class="subtitle">Uploaded: '+x.time+'</p></div>';}).join(''):'<div class="day"><span class="subtitle">No document uploaded for this day.</span></div>';
+  var r=day.report||{};
+  var reports='<div style="display:grid;gap:10px;margin-top:12px">'+
+    '<div class="day"><b>🐍 Python / DSA Report</b><p class="subtitle" style="white-space:pre-wrap">'+(r.py||'No report written.')+'</p></div>'+
+    '<div class="day"><b>🧠 AI / ML / GenAI Report</b><p class="subtitle" style="white-space:pre-wrap">'+(r.ai||'No report written.')+'</p></div>'+
+    '<div class="day"><b>📁 Project Report</b><p class="subtitle" style="white-space:pre-wrap">'+(r.pr||'No report written.')+'</p></div>'+
+    '<div class="day"><b>💬 General Remark</b><p class="subtitle" style="white-space:pre-wrap">'+(r.remark||'No general remark.')+'</p></div>'+
+    '</div>';
   modal('<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:15px"><div><h2 style="margin:0">View '+label+'</h2><p class="subtitle">Daily syllabus, study time and uploaded evidence.</p></div><span class="badge">'+(complete(k)?'Verified':day.documentUploaded?'Document uploaded':'Not completed')+'</span></div>'+
     '<div class="section"><div class="section-head"><h3 style="margin:0">Assigned Syllabus</h3></div>'+syllabus+'</div>'+
     '<div class="section"><div class="section-head"><h3 style="margin:0">Study Time</h3></div><div class="grid stats">'+
       '<div class="card stat"><div class="stat-label">Python / DSA</div><div class="stat-value">'+tm('py')+'</div></div>'+
       '<div class="card stat"><div class="stat-label">AI / ML</div><div class="stat-value">'+tm('ai')+'</div></div>'+
       '<div class="card stat"><div class="stat-label">Project</div><div class="stat-value">'+tm('pr')+'</div></div></div></div>'+
+    '<div class="section"><div class="section-head"><h3 style="margin:0">Daily Report</h3></div>'+reports+'</div>'+
     '<div class="section"><div class="section-head"><h3 style="margin:0">Uploaded Documents</h3></div>'+docs+'</div>'+
     '<div style="margin-top:20px;text-align:right"><button class="btn ghost" onclick="closeModal()">Close</button></div>');
 }
@@ -321,6 +337,9 @@ function goToCompletion(){
 function renderCompletion(){
   $('cp').textContent=fmt(elapsed('py'));$('ca').textContent=fmt(elapsed('ai'));$('cr').textContent=fmt(elapsed('pr'));
   $('ct').textContent=fmt(elapsed('py')+elapsed('ai')+elapsed('pr'));
+  var d=ensureDay(TK),r=d.report||{};
+  $('reportPy').value=r.py||'';$('reportAi').value=r.ai||'';
+  $('reportPr').value=r.pr||'';$('reportRemark').value=r.remark||'';
 }
 function fileChosen(){var f=$('dailyFile').files[0];$('fileName').textContent=f?f.name:'No file selected'}
 function submitDay(){
@@ -328,8 +347,11 @@ function submitDay(){
   if(!f){alert('Please upload your Daily Summary document first.');return}
   if(key(new Date())!==S.completionDay){alert('The 12:00 AM deadline has passed. This day cannot be added to the streak.');return}
   if(!allOK()){alert('Each section must reach at least 1 hour.');return}
+  var py=$('reportPy').value.trim(),ai=$('reportAi').value.trim(),pr=$('reportPr').value.trim(),remark=$('reportRemark').value.trim();
+  if(!py||!ai||!pr){alert('Please complete the Python/DSA, AI/ML/GenAI and Project reports before submitting.');return}
+  var d=ensureDay(S.completionDay);d.report={py:py,ai:ai,pr:pr,remark:remark};
   S.evidence.push({date:S.completionDay,name:f.name,time:new Date().toLocaleTimeString(),ok:true});
-  ensureDay(S.completionDay).documentUploaded=true;save();
+  d.documentUploaded=true;save();
   page('dashboard',document.querySelector('#nav button'));alert('Day completed. Your streak has been updated.');
 }
 function modal(html){$('modalBox').innerHTML=html;$('modal').classList.add('on')}
