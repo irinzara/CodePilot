@@ -424,55 +424,56 @@ function saveDayEdit(k){
 }
 
 function dateElapsed(d,id){
-  var k=key(d),day=S.days[k],t=day&&day.timers?day.timers[id]:null;
+  var k=key(d),day=(S.days&&S.days[k])||null,t=day&&day.timers?day.timers[id]:null;
   if(!t||typeof t!=='object')return 0;
-  var e=typeof t.elapsed==='number'&&isFinite(t.elapsed)?t.elapsed:0;
-  if(k===TK&&t.running&&t.start)e+=Math.max(0,Date.now()-t.start);
+  var e=(typeof t.elapsed==='number'&&isFinite(t.elapsed))?t.elapsed:0;
+  if(k===TK&&t.running&&typeof t.start==='number')e+=Math.max(0,Date.now()-t.start);
   return e;
 }
 function renderConsistency(){
   var svg=$('consistencyChart');
   if(!svg)return;
-  var rows=[];
-  var maxMs=0;
-  for(var i=29;i>=0;i--){
-    var d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-i);
-    var py=dateElapsed(d,'py'),ai=dateElapsed(d,'ai'),pr=dateElapsed(d,'pr'),total=py+ai+pr;
-    maxMs=Math.max(maxMs,total);
-    rows.push({date:d,label:d.toLocaleDateString(undefined,{month:'short',day:'numeric'}),py:py,ai:ai,pr:pr,total:total});
+  try{
+    var rows=[],maxMs=0;
+    for(var i=29;i>=0;i--){
+      var d=new Date();d.setHours(12,0,0,0);d.setDate(d.getDate()-i);
+      var py=dateElapsed(d,'py'),ai=dateElapsed(d,'ai'),pr=dateElapsed(d,'pr'),total=py+ai+pr;
+      if(total>maxMs)maxMs=total;
+      rows.push({label:d.toLocaleDateString(undefined,{month:'short',day:'numeric'}),py:py,ai:ai,pr:pr,total:total});
+    }
+    var W=900,Ht=290,L=52,R=18,T=18,B=42,innerW=W-L-R,innerH=Ht-T-B;
+    var maxHours=Math.max(1,Math.ceil(maxMs/H));
+    var pts=[];
+    rows.forEach(function(r,i){
+      var ratio=(r.total/H)/maxHours;
+      pts.push({x:L+(i/(rows.length-1))*innerW,y:T+(1-ratio)*innerH,r:r});
+    });
+    var path=pts.map(function(p,i){return(i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)}).join(' ');
+    var html='';
+    html+='<line class="consistency-grid" x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(T+innerH)+'"/>';
+    html+='<line class="consistency-grid" x1="'+L+'" y1="'+T+'" x2="'+(W-R)+'" y2="'+T+'"/>';
+    html+='<line class="consistency-grid" x1="'+L+'" y1="'+(T+innerH/2)+'" x2="'+(W-R)+'" y2="'+(T+innerH/2)+'"/>';
+    html+='<line class="consistency-grid" x1="'+L+'" y1="'+(T+innerH)+'" x2="'+(W-R)+'" y2="'+(T+innerH)+'"/>';
+    html+='<text class="consistency-axis" x="10" y="'+(T+4)+'">'+maxHours+'h</text>';
+    html+='<text class="consistency-axis" x="10" y="'+(T+innerH/2+4)+'">'+(maxHours/2).toFixed(1)+'h</text>';
+    html+='<text class="consistency-axis" x="20" y="'+(T+innerH+4)+'">0h</text>';
+    html+='<path class="consistency-line" d="'+path+'"/>';
+    pts.forEach(function(p){
+      html+='<circle class="consistency-point" cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="5" data-date="'+p.r.label+'" data-total="'+fmt(p.r.total)+'" data-py="'+fmt(p.r.py)+'" data-ai="'+fmt(p.r.ai)+'" data-pr="'+fmt(p.r.pr)+'" onmouseenter="showConsistencyTip(event,this)" onmouseleave="hideConsistencyTip()"/>';
+    });
+    [0,7,14,21,29].forEach(function(i){
+      var p=pts[i];html+='<text class="consistency-axis" text-anchor="middle" x="'+p.x.toFixed(1)+'" y="'+(Ht-14)+'">'+rows[i].label+'</text>';
+    });
+    svg.innerHTML=html;
+  }catch(err){
+    console.error('CodePilot learning-time chart error',err);
+    svg.innerHTML='<text class="consistency-axis" x="52" y="70">Learning data could not be rendered. Refresh the page.</text>';
   }
-  var W=900,Ht=290,L=48,R=18,T=18,B=42,innerW=W-L-R,innerH=Ht-T-B;
-  var maxHours=Math.max(1,Math.ceil(maxMs/H));
-  var pts=rows.map(function(r,i){
-    return {x:L+(rows.length===1?0:i/(rows.length-1))*innerW,y:T+(1-(r.total/H/ maxHours))*innerH,r:r};
-  });
-  var path=pts.map(function(p,i){return (i?'L':'M')+p.x.toFixed(1)+' '+p.y.toFixed(1)}).join(' ');
-  var mid=(maxHours/2);
-  var html='<line class="consistency-grid" x1="'+L+'" y1="'+T+'" x2="'+L+'" y2="'+(T+innerH)+'"/>';
-  html+='<line class="consistency-grid" x1="'+L+'" y1="'+T+'" x2="'+(W-R)+'" y2="'+T+'"/>';
-  html+='<line class="consistency-grid" x1="'+L+'" y1="'+(T+innerH/2)+'" x2="'+(W-R)+'" y2="'+(T+innerH/2)+'"/>';
-  html+='<line class="consistency-grid" x1="'+L+'" y1="'+(T+innerH)+'" x2="'+(W-R)+'" y2="'+(T+innerH)+'"/>';
-  html+='<text class="consistency-axis" x="8" y="'+(T+4)+'">'+maxHours+'h</text><text class="consistency-axis" x="8" y="'+(T+innerH/2+4)+'">'+(Number.isInteger(mid)?mid:mid.toFixed(1))+'h</text><text class="consistency-axis" x="18" y="'+(T+innerH+4)+'">0h</text>';
-  html+='<path class="consistency-line" d="'+path+'"/>';
-  pts.forEach(function(p){
-    html+='<circle class="consistency-point" cx="'+p.x+'" cy="'+p.y+'" r="5" data-date="'+p.r.label+'" data-total="'+fmt(p.r.total)+'" data-py="'+fmt(p.r.py)+'" data-ai="'+fmt(p.r.ai)+'" data-pr="'+fmt(p.r.pr)+'" onmouseenter="showConsistencyTip(event,this)" onmouseleave="hideConsistencyTip()"/>';
-  });
-  [0,7,14,21,29].forEach(function(i){
-    var p=pts[i];
-    html+='<text class="consistency-axis" text-anchor="middle" x="'+p.x+'" y="'+(Ht-14)+'">'+rows[i].label+'</text>';
-  });
-  svg.innerHTML=html;
 }
 function showConsistencyTip(e,el){
   var tip=$('consistencyTip');
-  tip.innerHTML='<strong>'+el.getAttribute('data-date')+'</strong>'+
-    '<div class="tip-total">Total: '+el.getAttribute('data-total')+'</div>'+
-    '<div class="tip-row"><span class="tip-label">Python / DSA</span><span>'+el.getAttribute('data-py')+'</span></div>'+
-    '<div class="tip-row"><span class="tip-label">AI / ML / GenAI</span><span>'+el.getAttribute('data-ai')+'</span></div>'+
-    '<div class="tip-row"><span class="tip-label">Project</span><span>'+el.getAttribute('data-pr')+'</span></div>';
-  tip.style.display='block';
-  tip.style.left=(e.clientX+12)+'px';
-  tip.style.top=(e.clientY-75)+'px';
+  tip.innerHTML='<strong>'+el.getAttribute('data-date')+'</strong><div class="tip-total">Total: '+el.getAttribute('data-total')+'</div><div class="tip-row"><span class="tip-label">Python / DSA</span><span>'+el.getAttribute('data-py')+'</span></div><div class="tip-row"><span class="tip-label">AI / ML / GenAI</span><span>'+el.getAttribute('data-ai')+'</span></div><div class="tip-row"><span class="tip-label">Project</span><span>'+el.getAttribute('data-pr')+'</span></div>';
+  tip.style.display='block';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-82)+'px';
 }
 function hideConsistencyTip(){$('consistencyTip').style.display='none'}
 function monthCalendar(year,month){
