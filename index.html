@@ -476,6 +476,19 @@ function showConsistencyTip(e,el){
   tip.style.display='block';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-82)+'px';
 }
 function hideConsistencyTip(){$('consistencyTip').style.display='none'}
+function isPastDate(d){
+  var today=new Date();today.setHours(0,0,0,0);
+  var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  return x<today;
+}
+function streakStatus(d){
+  if(!isPastDate(d))return 'future';
+  if(d.getDay()===0||d.getDay()===6)return 'complete';
+  return complete(key(d))?'complete':'incomplete';
+}
+function dMonth(year,month){
+  return new Date(year,month,1).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+}
 function monthCalendar(year,month){
   var first=new Date(year,month,1),days=new Date(year,month+1,0).getDate(),cells='',start=first.getDay();
   for(var i=0;i<start;i++)cells+='<div class="month-day empty"></div>';
