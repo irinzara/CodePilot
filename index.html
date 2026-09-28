@@ -260,27 +260,60 @@ function save(){
   catch(e){console.error('CodePilot storage error:',e);alert('CodePilot could not save your data in this browser. Please make sure site storage is enabled.')}
   if(cloudReady&&!cloudLoading)cloudSave(payload);else if(!cloudReady)cloudSaveQueued=true;
 }
+async function cloudFetch(path,options){
+  options=options||{};
+  var headers=Object.assign({
+    'apikey':SUPABASE_PUBLISHABLE_KEY,
+    'Authorization':'Bearer '+SUPABASE_PUBLISHABLE_KEY,
+    'Content-Type':'application/json'
+  },options.headers||{});
+  var res=await fetch(SUPABASE_URL+'/rest/v1/'+path,Object.assign({},options,{headers:headers}));
+  if(!res.ok){
+    var msg=await res.text().catch(function(){return ''});
+    throw new Error('Supabase HTTP '+res.status+(msg?' — '+msg:''));
+  }
+  var text=await res.text();
+  return text?JSON.parse(text):null;
+}
 async function cloudSave(payload){
-  if(!supabaseClient)return;
   try{
-    var res=await supabaseClient.from('codepilot_state').upsert({id:SUPABASE_ROW_ID,state:JSON.parse(payload),updated_at:new Date().toISOString()},{onConflict:'id'});
-    if(res.error)throw res.error; cloudSaveQueued=false;
-  }catch(e){console.error('CodePilot cloud save failed:',e);cloudSaveQueued=true;}
+    var body={id:SUPABASE_ROW_ID,state:JSON.parse(payload),updated_at:new Date().toISOString()};
+    await cloudFetch('codepilot_state?on_conflict=id',{
+      method:'POST',
+      headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+      body:JSON.stringify(body)
+    });
+    cloudSaveQueued=false;
+    return true;
+  }catch(e){
+    console.error('CodePilot cloud save failed:',e);
+    cloudSaveQueued=true;
+    return false;
+  }
 }
 async function initCloud(){
-  if(!window.supabase||!window.supabase.createClient){console.warn('Supabase client unavailable; local storage remains active.');return;}
-  supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
   try{
-    var res=await supabaseClient.from('codepilot_state').select('state,updated_at').eq('id',SUPABASE_ROW_ID).maybeSingle();
-    if(res.error)throw res.error;
+    if(window.supabase&&window.supabase.createClient){
+      supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+    }
     cloudLoading=true;
-    if(res.data&&res.data.state){mergeStateInto(S,res.data.state);try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(BACKUP_KEY,JSON.stringify(S));}catch(e){}}
-    else await cloudSave(JSON.stringify(S));
-    cloudReady=true;cloudLoading=false;
-    if(cloudSaveQueued)await cloudSave(JSON.stringify(S));
+    var rows=await cloudFetch('codepilot_state?id=eq.'+encodeURIComponent(SUPABASE_ROW_ID)+'&select=state,updated_at');
+    if(Array.isArray(rows)&&rows.length&&rows[0].state){
+      mergeStateInto(S,rows[0].state);
+      try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(BACKUP_KEY,JSON.stringify(S));}catch(e){}
+    }
+    cloudReady=true;
+    cloudLoading=false;
+    await cloudSave(JSON.stringify(S));
     render();
-  }catch(e){cloudLoading=false;console.error('CodePilot cloud load failed; local recovery remains active:',e);}
+  }catch(e){
+    cloudLoading=false;
+    cloudReady=false;
+    cloudSaveQueued=true;
+    console.error('CodePilot cloud sync failed; local recovery remains active:',e);
+  }
 }
+window.addEventListener('online',function(){if(cloudReady||cloudSaveQueued)cloudSave(JSON.stringify(S));});
 function pad(n){return String(n).padStart(2,'0')}
 function key(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 var now=new Date(), TK=key(now), H=3600000;
@@ -638,6 +671,63 @@ function render(){
   $('offers').textContent=S.jobs.filter(function(j){return j.s==='Offer'}).length;
   if(S.report)$('report').innerHTML='<div class="score">'+S.report.score+'</div><p>'+S.report.comment+'</p><b>Strength:</b> '+S.report.strength+'<br><br><b>Next sprint:</b> '+S.report.next;
 }
+function clearCareerFilters(){
+  var ids=['careerStatusFilter','careerPriorityFilter','careerInterviewFilter','careerSortFilter'];
+  if($(ids[0]))$(ids[0]).value='';
+  if($(ids[1]))$(ids[1]).value='';
+  if($(ids[2]))$(ids[2]).value='';
+  if($(ids[3]))$(ids[3]).value='newest';
+  renderCareerTable();
+}
+function renderCareerTable(){
+  var el=$('jobTable');if(!el)return;
+  var status=$('careerStatusFilter')?$('careerStatusFilter').value:'';
+  var priority=$('careerPriorityFilter')?$('careerPriorityFilter').value:'';
+  var interviewFilter=$('careerInterviewFilter')?$('careerInterviewFilter').value:'';
+  var sort=$('careerSortFilter')?$('careerSortFilter').value:'newest';
+  var todayKey=TK;
+  var start=new Date();start.setHours(0,0,0,0);
+  var weekEnd=new Date(start);weekEnd.setDate(weekEnd.getDate()+7);
+  var jobs=S.jobs.map(function(j,i){return {j:j,i:i};}).filter(function(x){
+    var j=x.j;
+    if(status&&j.s!==status)return false;
+    var jp=j.p==='Stretch'?'Low':(j.p||'Medium');
+    if(priority&&jp!==priority)return false;
+    var id=j.interviewDate||'';
+    if(interviewFilter==='none'&&id)return false;
+    if(interviewFilter==='today'&&id!==todayKey)return false;
+    if(interviewFilter==='upcoming'&&(!id||id<todayKey))return false;
+    if(interviewFilter==='past'&&(!id||id>=todayKey))return false;
+    if(interviewFilter==='week'&&(!id||id<todayKey||id>=key(weekEnd)))return false;
+    return true;
+  });
+  jobs.sort(function(a,b){
+    var x=a.j,y=b.j;
+    if(sort==='oldest')return String(x.d||'').localeCompare(String(y.d||''));
+    if(sort==='interview'){
+      var xi=x.interviewDate||'9999-12-31',yi=y.interviewDate||'9999-12-31';
+      return xi.localeCompare(yi);
+    }
+    if(sort==='priority'){
+      var rank={High:0,Medium:1,Low:2,Stretch:2};
+      return (rank[x.p]??1)-(rank[y.p]??1);
+    }
+    if(sort==='company')return String(x.c||'').localeCompare(String(y.c||''));
+    return String(y.d||'').localeCompare(String(x.d||''));
+  });
+  if(!jobs.length){
+    el.innerHTML='<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted)">No applications match the current filters.</td></tr>';
+    return;
+  }
+  el.innerHTML=jobs.map(function(x){
+    var j=x.j,i=x.i,p=j.p==='Stretch'?'Low':(j.p||'Medium');
+    var cls=p==='High'?'priority-high':p==='Medium'?'priority-medium':'priority-low';
+    return '<tr><td><b>'+esc(j.c||'')+'</b></td><td>'+esc(j.r||'')+'</td><td><span class="priority-badge '+cls+'">'+esc(p)+'</span></td><td>'+esc(j.s||'')+'</td><td>'+esc(j.d||'')+'</td><td>'+esc(j.interviewDate||'—')+'</td><td>'+esc(j.n||'—')+'</td><td><button class="btn ghost" style="padding:6px 9px;font-size:11px" onclick="editJob('+i+')">Edit</button></td></tr>';
+  }).join('');
+}
+function esc(v){
+  return String(v).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];});
+}
 function page(id,btn){
   document.querySelectorAll('main>section').forEach(function(s){s.classList.add('hidden')});
   $(id).classList.remove('hidden');
@@ -728,7 +818,7 @@ function saveTest(){S.tests.push({date:$('td').value,name:$('tn').value||'Extern
 function jobModal(){
   modal('<h2>Add Application</h2>'+
     '<div class="row"><div class="field"><label>Company</label><input class="input" id="jc"></div><div class="field"><label>Role</label><input class="input" id="jr"></div></div>'+
-    '<div class="row"><div class="field"><label>Priority</label><select class="input" id="jp"><option>High</option><option>Medium</option><option>Stretch</option></select></div><div class="field"><label>Status</label><select class="input" id="js"><option>Applied</option><option>Shortlisted</option><option>Assessment</option><option>Interview</option><option>Offer</option><option>Rejected</option></select></div></div>'+
+    '<div class="row"><div class="field"><label>Priority</label><select class="input" id="jp"><option>High</option><option>Medium</option><option>Low</option></select></div><div class="field"><label>Status</label><select class="input" id="js"><option>Applied</option><option>Shortlisted</option><option>Assessment</option><option>Interview</option><option>Offer</option><option>Rejected</option></select></div></div>'+
     '<div class="row"><div class="field"><label>Interview date <span style="font-weight:500">(optional)</span></label><input class="input" id="ji" type="date"></div><div class="field"><label>Referral</label><select class="input" id="jref"><option value="false">No</option><option value="true">Yes</option></select></div></div>'+
     '<div class="field"><label>Notes</label><textarea id="jn" rows="3"></textarea></div>'+
     '<div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveJob()">Save</button></div>');
@@ -742,7 +832,7 @@ function editJob(i){
   if(!j)return;
   modal('<h2>Edit Application</h2>'+
     '<div class="row"><div class="field"><label>Company</label><input class="input" id="ec" value="'+(j.c||'')+'"></div><div class="field"><label>Role</label><input class="input" id="er" value="'+(j.r||'')+'"></div></div>'+
-    '<div class="row"><div class="field"><label>Priority</label><select class="input" id="ep"><option '+(j.p==='High'?'selected':'')+'>High</option><option '+(j.p==='Medium'?'selected':'')+'>Medium</option><option '+(j.p==='Stretch'?'selected':'')+'>Stretch</option></select></div><div class="field"><label>Status</label><select class="input" id="es"><option '+(j.s==='Applied'?'selected':'')+'>Applied</option><option '+(j.s==='Shortlisted'?'selected':'')+'>Shortlisted</option><option '+(j.s==='Assessment'?'selected':'')+'>Assessment</option><option '+(j.s==='Interview'?'selected':'')+'>Interview</option><option '+(j.s==='Offer'?'selected':'')+'>Offer</option><option '+(j.s==='Rejected'?'selected':'')+'>Rejected</option></select></div></div>'+
+    '<div class="row"><div class="field"><label>Priority</label><select class="input" id="ep"><option '+(j.p==='High'?'selected':'')+'>High</option><option '+(j.p==='Medium'?'selected':'')+'>Medium</option><option '+((j.p==='Low'||j.p==='Stretch')?'selected':'')+'>Low</option></select></div><div class="field"><label>Status</label><select class="input" id="es"><option '+(j.s==='Applied'?'selected':'')+'>Applied</option><option '+(j.s==='Shortlisted'?'selected':'')+'>Shortlisted</option><option '+(j.s==='Assessment'?'selected':'')+'>Assessment</option><option '+(j.s==='Interview'?'selected':'')+'>Interview</option><option '+(j.s==='Offer'?'selected':'')+'>Offer</option><option '+(j.s==='Rejected'?'selected':'')+'>Rejected</option></select></div></div>'+
     '<div class="row"><div class="field"><label>Interview date <span style="font-weight:500">(optional)</span></label><input class="input" id="ei" type="date" value="'+(j.interviewDate||'')+'"></div><div class="field"><label>Referral</label><select class="input" id="eref"><option value="false" '+(!j.ref?'selected':'')+'>No</option><option value="true" '+(j.ref?'selected':'')+'>Yes</option></select></div></div>'+
     '<div class="field"><label>Notes</label><textarea id="en" rows="4">'+(j.n||'')+'</textarea></div>'+
     '<div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="updateJob('+i+')">Save changes</button></div>');
