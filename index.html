@@ -169,9 +169,14 @@
 
 <div class="modal" id="modal"><div class="modal-box" id="modalBox"></div></div><div id="consistencyTip" class="consistency-tip"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 var KEY='codepilot_v4';
 var BACKUP_KEY='codepilot_v4_backup';
+var SUPABASE_URL='https://pdgnzmlaiobtpacnbdtj.supabase.co';
+var SUPABASE_PUBLISHABLE_KEY='sb_publishable_PiS7gcCeBQNWs1vnhT6o7A_9nUD-Lou';
+var SUPABASE_ROW_ID='local-user';
+var supabaseClient=null,cloudReady=false,cloudSaveQueued=false,cloudLoading=false;
 function parseJSON(v,f){try{return v?JSON.parse(v):f}catch(e){return f}}
 function objectState(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:null}
 function mergeArray(primary,legacy){
@@ -253,6 +258,28 @@ function save(){
   var payload=JSON.stringify(S);
   try{localStorage.setItem(KEY,payload);localStorage.setItem(BACKUP_KEY,payload)}
   catch(e){console.error('CodePilot storage error:',e);alert('CodePilot could not save your data in this browser. Please make sure site storage is enabled.')}
+  if(cloudReady&&!cloudLoading)cloudSave(payload);else if(!cloudReady)cloudSaveQueued=true;
+}
+async function cloudSave(payload){
+  if(!supabaseClient)return;
+  try{
+    var res=await supabaseClient.from('codepilot_state').upsert({id:SUPABASE_ROW_ID,state:JSON.parse(payload),updated_at:new Date().toISOString()},{onConflict:'id'});
+    if(res.error)throw res.error; cloudSaveQueued=false;
+  }catch(e){console.error('CodePilot cloud save failed:',e);cloudSaveQueued=true;}
+}
+async function initCloud(){
+  if(!window.supabase||!window.supabase.createClient){console.warn('Supabase client unavailable; local storage remains active.');return;}
+  supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+  try{
+    var res=await supabaseClient.from('codepilot_state').select('state,updated_at').eq('id',SUPABASE_ROW_ID).maybeSingle();
+    if(res.error)throw res.error;
+    cloudLoading=true;
+    if(res.data&&res.data.state){mergeStateInto(S,res.data.state);try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(BACKUP_KEY,JSON.stringify(S));}catch(e){}}
+    else await cloudSave(JSON.stringify(S));
+    cloudReady=true;cloudLoading=false;
+    if(cloudSaveQueued)await cloudSave(JSON.stringify(S));
+    render();
+  }catch(e){cloudLoading=false;console.error('CodePilot cloud load failed; local recovery remains active:',e);}
 }
 function pad(n){return String(n).padStart(2,'0')}
 function key(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
@@ -766,6 +793,7 @@ window.addEventListener('beforeunload',function(){
 });
 document.addEventListener('DOMContentLoaded',function(){
   render();
+  initCloud();
   setInterval(function(){
     var running=timer('py').running||timer('ai').running||timer('pr').running;
     if(running){
