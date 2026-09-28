@@ -317,6 +317,22 @@ window.addEventListener('online',function(){if(cloudReady||cloudSaveQueued)cloud
 function pad(n){return String(n).padStart(2,'0')}
 function key(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
 var now=new Date(), TK=key(now), H=3600000;
+function rolloverIfNeeded(){
+  var currentKey=key(new Date());
+  if(currentKey===TK)return false;
+  ['py','ai','pr'].forEach(function(id){
+    var t=timer(id);
+    if(t.running&&t.start){
+      t.elapsed+=Math.max(0,Date.now()-t.start);
+      t.running=false;
+      t.start=0;
+    }
+  });
+  TK=currentKey;
+  ensureDay(TK);
+  save();
+  return true;
+}
 
 function ensureDay(k){
   if(!S.days[k]||typeof S.days[k]!=='object'||Array.isArray(S.days[k]))S.days[k]={};
@@ -722,7 +738,7 @@ function renderCareerTable(){
   el.innerHTML=jobs.map(function(x){
     var j=x.j,i=x.i,p=j.p==='Stretch'?'Low':(j.p||'Medium');
     var cls=p==='High'?'priority-high':p==='Medium'?'priority-medium':'priority-low';
-    return '<tr><td><b>'+esc(j.c||'')+'</b></td><td>'+esc(j.r||'')+'</td><td><span class="priority-badge '+cls+'">'+esc(p)+'</span></td><td>'+esc(j.s||'')+'</td><td>'+esc(j.d||'')+'</td><td>'+esc(j.interviewDate||'—')+'</td><td>'+esc(j.n||'—')+'</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost" style="padding:6px 9px;font-size:11px" onclick="editJob('+i+')">Edit</button><button class="btn ghost" style="padding:6px 9px;font-size:11px;color:#b42318;background:#fff0f0" onclick="deleteJob('+i+')">Delete</button></div></td></tr>';
+    return '<tr><td><b>'+esc(j.c||'')+'</b></td><td>'+esc(j.r||'')+'</td><td><span class="priority-badge '+cls+'">'+esc(p)+'</span></td><td>'+esc(j.s||'')+'</td><td>'+esc(j.d||'')+'</td><td>'+esc(j.interviewDate||'—')+'</td><td>'+esc(j.n||'—')+'</td><td><div style="display:flex;gap:6px;align-items:center"><button class="btn ghost" title="Edit application" aria-label="Edit application" style="padding:6px 9px;font-size:14px;line-height:1" onclick="editJob('+i+')">✏️</button><button class="btn ghost" title="Delete application" aria-label="Delete application" style="padding:6px 9px;font-size:14px;line-height:1;color:#b42318;background:#fff0f0" onclick="deleteJob('+i+')">🗑️</button></div></td></tr>';
   }).join('');
 }
 function esc(v){
@@ -895,6 +911,10 @@ document.addEventListener('DOMContentLoaded',function(){
   render();
   initCloud();
   setInterval(function(){
+    if(rolloverIfNeeded()){
+      render();
+      return;
+    }
     var running=timer('py').running||timer('ai').running||timer('pr').running;
     if(running){
       persistRunningTimers();
