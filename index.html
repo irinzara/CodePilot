@@ -199,19 +199,46 @@ function mergeDays(primary,legacy){
 }
 var storedPrimary=parseJSON(localStorage.getItem(KEY),null);
 var storedBackup=parseJSON(localStorage.getItem(BACKUP_KEY),null);
-var S=objectState(storedPrimary)||objectState(storedBackup)||{};
-var legacyKeys=['iry_sprint_v3','iry_sprint_v2','codepilot_v3','codepilot_v2','iry_sprint'];
-legacyKeys.forEach(function(k){
-  var old=objectState(parseJSON(localStorage.getItem(k),null));
-  if(!old)return;
-  if(S.sprint===undefined&&old.sprint!==undefined)S.sprint=old.sprint;
-  S.days=mergeDays(S.days,old.days);
-  S.evidence=mergeArray(S.evidence,old.evidence);
-  S.tests=mergeArray(S.tests,old.tests);
-  S.jobs=mergeArray(S.jobs,old.jobs);
-  if(S.report===undefined&&old.report!==undefined)S.report=old.report;
-  if(S.rules===undefined&&old.rules!==undefined)S.rules=old.rules;
+var S={};
+function mergeStateInto(target,source){
+  source=objectState(source);if(!source)return target;
+  if(source.sprint!==undefined && target.sprint===undefined)target.sprint=source.sprint;
+  else if(source.sprint&&target.sprint&&typeof source.sprint==='object'&&typeof target.sprint==='object'){
+    Object.keys(source.sprint).forEach(function(k){if(target.sprint[k]===undefined)target.sprint[k]=source.sprint[k]});
+  }
+  target.days=mergeDays(target.days,source.days);
+  target.evidence=mergeArray(target.evidence,source.evidence);
+  target.tests=mergeArray(target.tests,source.tests);
+  target.jobs=mergeArray(target.jobs,source.jobs);
+  if(source.report!==undefined && target.report===undefined)target.report=source.report;
+  if(source.rules!==undefined && target.rules===undefined)target.rules=source.rules;
+  return target;
+}
+mergeStateInto(S,storedPrimary);
+mergeStateInto(S,storedBackup);
+
+var knownLegacyKeys=['iry_sprint_v3','iry_sprint_v2','codepilot_v3','codepilot_v2','iry_sprint'];
+knownLegacyKeys.forEach(function(k){
+  mergeStateInto(S,parseJSON(localStorage.getItem(k),null));
 });
+
+/* Recovery pass: older CodePilot versions may have used a different key.
+   Only inspect keys that look like CodePilot/Iry sprint storage; never touch unrelated site data. */
+try{
+  for(var li=0;li<localStorage.length;li++){
+    var lk=localStorage.key(li)||'';
+    if(!/codepilot|iry_sprint|iry.*sprint/i.test(lk))continue;
+    if([KEY,BACKUP_KEY].indexOf(lk)>=0||knownLegacyKeys.indexOf(lk)>=0)continue;
+    var candidate=parseJSON(localStorage.getItem(lk),null);
+    if(candidate&&typeof candidate==='object'){
+      if(candidate.jobs||candidate.days||candidate.sprint||candidate.evidence||candidate.tests){
+        mergeStateInto(S,candidate);
+      }
+    }
+  }
+}catch(e){console.warn('CodePilot recovery scan skipped:',e)}
+
+
 if(!S.days||typeof S.days!=='object'||Array.isArray(S.days))S.days={};
 if(!Array.isArray(S.evidence))S.evidence=[];
 if(!Array.isArray(S.tests))S.tests=[];
