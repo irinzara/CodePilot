@@ -722,7 +722,7 @@ function renderCareerTable(){
   el.innerHTML=jobs.map(function(x){
     var j=x.j,i=x.i,p=j.p==='Stretch'?'Low':(j.p||'Medium');
     var cls=p==='High'?'priority-high':p==='Medium'?'priority-medium':'priority-low';
-    return '<tr><td><b>'+esc(j.c||'')+'</b></td><td>'+esc(j.r||'')+'</td><td><span class="priority-badge '+cls+'">'+esc(p)+'</span></td><td>'+esc(j.s||'')+'</td><td>'+esc(j.d||'')+'</td><td>'+esc(j.interviewDate||'—')+'</td><td>'+esc(j.n||'—')+'</td><td><button class="btn ghost" style="padding:6px 9px;font-size:11px" onclick="editJob('+i+')">Edit</button></td></tr>';
+    return '<tr><td><b>'+esc(j.c||'')+'</b></td><td>'+esc(j.r||'')+'</td><td><span class="priority-badge '+cls+'">'+esc(p)+'</span></td><td>'+esc(j.s||'')+'</td><td>'+esc(j.d||'')+'</td><td>'+esc(j.interviewDate||'—')+'</td><td>'+esc(j.n||'—')+'</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn ghost" style="padding:6px 9px;font-size:11px" onclick="editJob('+i+')">Edit</button><button class="btn ghost" style="padding:6px 9px;font-size:11px;color:#b42318;background:#fff0f0" onclick="deleteJob('+i+')">Delete</button></div></td></tr>';
   }).join('');
 }
 function esc(v){
@@ -836,6 +836,16 @@ function editJob(i){
     '<div class="row"><div class="field"><label>Interview date <span style="font-weight:500">(optional)</span></label><input class="input" id="ei" type="date" value="'+(j.interviewDate||'')+'"></div><div class="field"><label>Referral</label><select class="input" id="eref"><option value="false" '+(!j.ref?'selected':'')+'>No</option><option value="true" '+(j.ref?'selected':'')+'>Yes</option></select></div></div>'+
     '<div class="field"><label>Notes</label><textarea id="en" rows="4">'+(j.n||'')+'</textarea></div>'+
     '<div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="updateJob('+i+')">Save changes</button></div>');
+}
+function deleteJob(i){
+  var j=S.jobs[i];
+  if(!j)return;
+  var company=j.c||'this application';
+  var role=j.r?(' — '+j.r):'';
+  if(!confirm('Delete '+company+role+'? This cannot be undone.'))return;
+  S.jobs.splice(i,1);
+  save();
+  render();
 }
 function updateJob(i){
   var j=S.jobs[i];if(!j)return;
