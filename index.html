@@ -253,6 +253,23 @@ if(S.rules===undefined||!S.rules||typeof S.rules!=='object')S.rules={py:60,ai:60
 if(typeof S.rules.py!=='number'||S.rules.py<1)S.rules.py=60;
 if(typeof S.rules.ai!=='number'||S.rules.ai<1)S.rules.ai=60;
 if(typeof S.rules.pr!=='number'||S.rules.pr<1)S.rules.pr=60;
+if(!S.__dataFixes||typeof S.__dataFixes!=='object')S.__dataFixes={};
+function repairKnownTimerData(){
+  if(S.__dataFixes.sep28_timer_correction_v1)return false;
+  var d=S.days&&S.days['2026-09-28'];
+  if(!d||!d.timers)return false;
+  ['py','ai','pr'].forEach(function(id){
+    if(!d.timers[id]||typeof d.timers[id]!=='object')d.timers[id]={elapsed:0,running:false,start:0};
+    d.timers[id].running=false;
+    d.timers[id].start=0;
+  });
+  d.timers.py.elapsed=0;
+  d.timers.ai.elapsed=3600000;
+  d.timers.pr.elapsed=1800000;
+  S.__dataFixes.sep28_timer_correction_v1=true;
+  return true;
+}
+repairKnownTimerData();
 function $(id){return document.getElementById(id)}
 function save(){
   var payload=JSON.stringify(S);
@@ -300,6 +317,7 @@ async function initCloud(){
     var rows=await cloudFetch('codepilot_state?id=eq.'+encodeURIComponent(SUPABASE_ROW_ID)+'&select=state,updated_at');
     if(Array.isArray(rows)&&rows.length&&rows[0].state){
       mergeStateInto(S,rows[0].state);
+      var repaired=repairKnownTimerData();
       try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(BACKUP_KEY,JSON.stringify(S));}catch(e){}
     }
     cloudReady=true;
