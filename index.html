@@ -271,7 +271,26 @@ function repairKnownTimerData(){
 }
 repairKnownTimerData();
 function $(id){return document.getElementById(id)}
+function jobSignature(j){
+  j=j||{};
+  return [String(j.c||'').trim().toLowerCase(),String(j.r||'').trim().toLowerCase(),String(j.d||'').trim()].join('|');
+}
+function dedupeJobs(){
+  if(!Array.isArray(S.jobs))S.jobs=[];
+  var seen=Object.create(null),out=[];
+  S.jobs.forEach(function(j){
+    var sig=jobSignature(j);
+    if(!sig||sig==='||'){out.push(j);return;}
+    if(seen[sig])return;
+    seen[sig]=true;
+    out.push(j);
+  });
+  var changed=out.length!==S.jobs.length;
+  S.jobs=out;
+  return changed;
+}
 function save(){
+  dedupeJobs();
   var payload=JSON.stringify(S);
   try{localStorage.setItem(KEY,payload);localStorage.setItem(BACKUP_KEY,payload)}
   catch(e){console.error('CodePilot storage error:',e);alert('CodePilot could not save your data in this browser. Please make sure site storage is enabled.')}
@@ -320,6 +339,7 @@ async function initCloud(){
       var repaired=repairKnownTimerData();
       try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(BACKUP_KEY,JSON.stringify(S));}catch(e){}
     }
+    dedupeJobs();
     cloudReady=true;
     cloudLoading=false;
     await cloudSave(JSON.stringify(S));
@@ -859,6 +879,7 @@ function jobModal(){
 }
 function saveJob(){
   S.jobs.push({c:$('jc').value,r:$('jr').value,p:$('jp').value,s:$('js').value,d:TK,n:$('jn').value||'',ref:$('jref').value==='true',interviewDate:$('ji').value||''});
+  dedupeJobs();
   save();closeModal();render()
 }
 function editJob(i){
@@ -877,7 +898,8 @@ function deleteJob(i){
   var company=j.c||'this application';
   var role=j.r?(' — '+j.r):'';
   if(!confirm('Delete '+company+role+'? This cannot be undone.'))return;
-  S.jobs.splice(i,1);
+  var sig=jobSignature(j);
+  S.jobs=S.jobs.filter(function(x){return jobSignature(x)!==sig;});
   save();
   render();
 }
