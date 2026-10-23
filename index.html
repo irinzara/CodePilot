@@ -669,6 +669,7 @@ function toggleStreakCalendar(){
   if(btn)btn.textContent=open?'View less':'View more';
 }
 function render(){
+  renderExpandedCalendars();
   var h=new Date().getHours();
   $('greeting').textContent=(h<12?'Good morning':h<18?'Good afternoon':'Good evening')+', Iry!';
   $('date').textContent=now.toLocaleDateString(undefined,{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
