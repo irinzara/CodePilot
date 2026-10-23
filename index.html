@@ -179,6 +179,21 @@ var SUPABASE_ROW_ID='local-user';
 var supabaseClient=null,cloudReady=false,cloudSaveQueued=false,cloudLoading=false;
 function parseJSON(v,f){try{return v?JSON.parse(v):f}catch(e){return f}}
 function objectState(v){return v&&typeof v==='object'&&!Array.isArray(v)?v:null}
+function normalizeWeekendTests(){
+  var seen={};
+  S.tests=(Array.isArray(S.tests)?S.tests:[]).filter(function(t){
+    if(!t)return false;
+    // Remove the specific unattended draft and collapse repeated copies of the same exam.
+    if(String(t.name||'').trim().toLowerCase()==='oct 23 2026' && String(t.date||'')==='2026-10-23')return false;
+    var sig=[t.date,String(t.name||'').trim().toLowerCase(),String(t.topic||'').trim().toLowerCase(),Number(t.duration)||0].join('|');
+    if(!seen[sig]){seen[sig]=t;return true;}
+    var old=seen[sig];
+    if(t.finished&&!old.finished){
+      var pos=S.tests.indexOf(old);if(pos>=0)S.tests[pos]=t;seen[sig]=t;
+    }
+    return false;
+  });
+}
 function mergeArray(primary,legacy){
   var out=Array.isArray(primary)?primary.slice():[];
   if(Array.isArray(legacy)) legacy.forEach(function(item){
@@ -221,6 +236,7 @@ function mergeStateInto(target,source){
 }
 mergeStateInto(S,storedPrimary);
 mergeStateInto(S,storedBackup);
+normalizeWeekendTests();
 
 var knownLegacyKeys=['iry_sprint_v3','iry_sprint_v2','codepilot_v3','codepilot_v2','iry_sprint'];
 knownLegacyKeys.forEach(function(k){
@@ -336,6 +352,7 @@ async function initCloud(){
     var rows=await cloudFetch('codepilot_state?id=eq.'+encodeURIComponent(SUPABASE_ROW_ID)+'&select=state,updated_at');
     if(Array.isArray(rows)&&rows.length&&rows[0].state){
       mergeStateInto(S,rows[0].state);
+      normalizeWeekendTests();
       var repaired=repairKnownTimerData();
       try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(BACKUP_KEY,JSON.stringify(S));}catch(e){}
     }
