@@ -137,7 +137,7 @@
 
 <section id="evidence" class="hidden"><div class="top"><div><h1>Evidence Vault</h1><div class="subtitle">Daily documents and verification history.</div></div></div><div class="card page-card"><table><thead><tr><th>Date</th><th>File</th><th>Status</th><th>Submitted</th><th>Streak</th></tr></thead><tbody id="evidenceTable"></tbody></table></div></section>
 
-<section id="tests" class="hidden"><div class="top"><div><h1>Weekend Tests</h1><div class="subtitle">External test results feed your mentor evaluation.</div></div><button class="btn primary" onclick="testModal()">+ Add test</button></div><div class="card page-card"><table><thead><tr><th>Date</th><th>Test</th><th>Topic</th><th>Score</th><th>Notes</th></tr></thead><tbody id="testTable"></tbody></table></div></section>
+<section id="tests" class="hidden"><div class="top"><div><h1>Weekend Tests</h1><div class="subtitle">Add a question paper and timed exam, or record external test results.</div></div><button class="btn primary" onclick="testModal()">+ Add test</button></div><div class="card page-card"><table><thead><tr><th>Date</th><th>Test</th><th>Topic</th><th>Duration</th><th>Status / Score</th><th>Notes</th><th>Action</th></tr></thead><tbody id="testTable"></tbody></table></div></section>
 
 <section id="career" class="hidden"><div class="top"><div><h1>Career Tracker</h1><div class="subtitle">AI · GenAI · Python · ML · AI Software Engineering</div></div><button class="btn primary" onclick="jobModal()">+ Add application</button></div><div class="grid stats"><div class="card stat"><div class="stat-label">Applications</div><div class="stat-value" id="apps">0</div></div><div class="card stat"><div class="stat-label">Interviews</div><div class="stat-value" id="interviews">0</div></div><div class="card stat"><div class="stat-label">Referrals</div><div class="stat-value" id="referrals">0</div></div><div class="card stat"><div class="stat-label">Offers</div><div class="stat-value" id="offers">0</div></div></div><div class="section card page-card"><div class="career-filters"><div class="field"><label>Status</label><select class="input" id="careerStatusFilter" onchange="renderCareerTable()"><option value="">All statuses</option><option>Applied</option><option>Shortlisted</option><option>Assessment</option><option>Interview</option><option>Offer</option><option>Rejected</option></select></div><div class="field"><label>Priority</label><select class="input" id="careerPriorityFilter" onchange="renderCareerTable()"><option value="">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select></div><div class="field"><label>Interview date</label><select class="input" id="careerInterviewFilter" onchange="renderCareerTable()"><option value="">All interview dates</option><option value="upcoming">Upcoming</option><option value="today">Today</option><option value="week">This week</option><option value="past">Past</option><option value="none">No interview scheduled</option></select></div><div class="field"><label>Sort by</label><select class="input" id="careerSortFilter" onchange="renderCareerTable()"><option value="newest">Applied date — newest</option><option value="oldest">Applied date — oldest</option><option value="interview">Interview date — nearest</option><option value="priority">Priority — High to Low</option><option value="company">Company A–Z</option></select></div><button class="btn ghost career-clear" onclick="clearCareerFilters()">Clear filters</button></div><table><thead><tr><th>Company</th><th>Role</th><th>Priority</th><th>Status</th><th>Applied</th><th>Interview</th><th>Notes</th><th>Action</th></tr></thead><tbody id="jobTable"></tbody></table></div></section>
 
@@ -714,8 +714,9 @@ function render(){
   }).join(''):'<tr><td colspan="5">No documents yet.</td></tr>';
 
   $('testTable').innerHTML=S.tests.length?S.tests.slice().reverse().map(function(t){
-    return '<tr><td>'+t.date+'</td><td>'+t.name+'</td><td>'+t.topic+'</td><td><b>'+t.score+'%</b></td><td>'+t.notes+'</td></tr>';
-  }).join(''):'<tr><td colspan="5">No tests yet.</td></tr>';
+    var idx=S.tests.indexOf(t),st=t.paperData?(t.finished?'Completed':'Ready'):(t.score+'%');
+    return '<tr><td>'+esc(t.date)+'</td><td>'+esc(t.name)+'</td><td>'+esc(t.topic)+'</td><td>'+(t.duration?esc(String(t.duration))+' min':'—')+'</td><td><b>'+st+'</b></td><td>'+esc(t.notes||'—')+'</td><td>'+(t.paperData&&!t.finished?'<button class="btn primary" style="padding:6px 9px" onclick="startExam('+idx+')">Start exam</button>':(t.paperData?'<span class="subtitle">Finished</span>':'—'))+'</td></tr>';
+  }).join(''):'<tr><td colspan="7">No tests yet.</td></tr>';
 
   renderCareerTable();
 
@@ -866,9 +867,41 @@ function saveSyllabus(){
   save();closeModal();page('syllabus',document.querySelectorAll('#nav button')[1]);
 }
 function testModal(){
-  modal('<h2>Add Weekend Test</h2><div class="row"><div class="field"><label>Date</label><input class="input" id="td" type="date" value="'+TK+'"></div><div class="field"><label>Score %</label><input class="input" id="ts" type="number" min="0" max="100"></div></div><div class="field"><label>Test</label><input class="input" id="tn" placeholder="Python / DSA / GenAI"></div><div class="field"><label>Topic</label><input class="input" id="tt"></div><div class="field"><label>Notes / mistakes</label><textarea id="tx" rows="3"></textarea></div><div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTest()">Save</button></div>');
+  modal('<h2>Add Weekend Test</h2><div class="row"><div class="field"><label>Date</label><input class="input" id="td" type="date" value="'+TK+'"></div><div class="field"><label>Previous score % (optional)</label><input class="input" id="ts" type="number" min="0" max="100"></div></div><div class="field"><label>Test name</label><input class="input" id="tn" placeholder="Python / DSA / GenAI"></div><div class="field"><label>Topic</label><input class="input" id="tt"></div><div class="row"><div class="field"><label>Exam duration (minutes)</label><input class="input" id="tDuration" type="number" min="1" max="600" value="60"></div><div class="field"><label>Question paper (PDF)</label><input class="input" id="tPaper" type="file" accept="application/pdf,.pdf"></div></div><div class="field"><label>Notes / mistakes</label><textarea id="tx" rows="3"></textarea></div><p class="subtitle">Attach a PDF to enable Start exam. The PDF is saved with your CodePilot state; large files may exceed browser/cloud limits.</p><div class="row"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" onclick="saveTest()">Save</button></div>');
 }
-function saveTest(){S.tests.push({date:$('td').value,name:$('tn').value||'External test',topic:$('tt').value||'General',score:+$('ts').value||0,notes:$('tx').value||''});save();closeModal();render()}
+async function saveTest(){
+  var file=$('tPaper').files[0],duration=Math.max(1,Math.min(600,parseInt($('tDuration').value,10)||60));
+  if(file&&file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name)){alert('Please select a PDF question paper.');return;}
+  var paperData='';
+  if(file){
+    if(file.size>4500000){alert('This PDF is over 4.5 MB. Please compress it before adding; cloud state has size limits.');return;}
+    paperData=await new Promise(function(resolve,reject){var rd=new FileReader();rd.onload=function(){resolve(String(rd.result))};rd.onerror=reject;rd.readAsDataURL(file)});
+  }
+  S.tests.push({date:$('td').value,name:$('tn').value||'Weekend test',topic:$('tt').value||'General',score:+$('ts').value||0,notes:$('tx').value||'',duration:duration,paperData:paperData,finished:false,startedAt:0,remainingMs:duration*60000});
+  save();closeModal();render();
+}
+var examTicker=null;
+function startExam(i){
+  var t=S.tests[i];if(!t||!t.paperData||t.finished)return;
+  if(!confirm('Start this timed exam now? The countdown cannot be paused.'))return;
+  t.startedAt=Date.now();t.remainingMs=t.duration*60000;t.finished=false;save();
+  var html='<h2>'+esc(t.name)+'</h2><div style="font-size:24px;font-weight:800;margin:12px 0" id="examClock"></div><div class="subtitle">Question paper — use the PDF viewer below. Finish when done; time expiry ends the session.</div><iframe title="Question paper" src="'+t.paperData+'" style="width:100%;height:55vh;border:1px solid var(--line);border-radius:12px;margin-top:12px"></iframe><div class="row"><button class="btn primary" onclick="finishExam('+i+',false)">Finish exam</button></div>';
+  modal(html);tickExam(i);
+  if(examTicker)clearInterval(examTicker);
+  examTicker=setInterval(function(){tickExam(i)},1000);
+}
+function tickExam(i){
+  var t=S.tests[i],el=$('examClock');if(!t||!el)return;
+  var remain=Math.max(0,t.duration*60000-(Date.now()-t.startedAt));
+  el.textContent=Math.floor(remain/3600000).toString().padStart(2,'0')+':'+Math.floor((remain%3600000)/60000).toString().padStart(2,'0')+':'+Math.floor((remain%60000)/1000).toString().padStart(2,'0');
+  if(remain<=0)finishExam(i,true);
+}
+function finishExam(i,expired){
+  var t=S.tests[i];if(!t||t.finished)return;
+  t.finished=true;t.completedAt=Date.now();t.expired=!!expired;
+  if(examTicker){clearInterval(examTicker);examTicker=null}
+  save();closeModal();render();alert(expired?'Time is up. Your exam session has ended.':'Exam marked as finished.');
+}
 function jobModal(){
   modal('<h2>Add Application</h2>'+
     '<div class="row"><div class="field"><label>Company</label><input class="input" id="jc"></div><div class="field"><label>Role</label><input class="input" id="jr"></div></div>'+
