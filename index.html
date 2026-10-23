@@ -129,8 +129,8 @@
     <svg id="consistencyChart" class="consistency-chart" viewBox="0 0 900 290" preserveAspectRatio="none"></svg>
   </div>
   <div class="section">
-    <div class="section-head"><div><h2>Streak Calendar</h2><div class="subtitle">🔥 completed · 😔 incomplete · weekends carry the streak only when Friday is completed</div></div><button class="btn ghost streak-more-btn" id="streakMoreBtn" onclick="toggleStreakCalendar()">View more</button></div>
-    <div class="card page-card"><div class="streak-grid" id="analyticsHeat"></div><div class="streak-legend">Weekends do not count as study days. Saturday and Sunday show 🔥 only when that week’s Friday streak was completed.</div><div class="streak-expanded" id="streakExpanded"><div class="months-grid" id="monthCalendars"></div></div></div>
+    <div class="section-head"><div><h2>Streak Calendar</h2><div class="subtitle">🔥 completed · 😔 incomplete · weekends carry the streak only when Friday is completed</div></div></div>
+    <div class="card page-card"><div class="months-grid" id="monthCalendars"></div><div class="streak-legend">Monthly view · Weekends carry streak continuity only when Friday was completed. Weekends are not extra study days.</div></div>
   </div>
   <div class="section card page-card"><h2>Current Sprint</h2><p class="subtitle" id="analyticsSprint">No active sprint yet.</p><div class="bar"><i id="analyticsBar"></i></div></div>
 </section>
@@ -661,6 +661,7 @@ function renderExpandedCalendars(){
   var months=[[2026,8],[2026,9],[2026,10],[2026,11],[2027,0],[2027,1],[2027,2]];
   el.innerHTML=months.map(function(m){return monthCalendar(m[0],m[1])}).join('');
 }
+function toggleStreakCalendar(){renderExpandedCalendars();}
 function toggleStreakCalendar(){
   var box=$('streakExpanded'),btn=$('streakMoreBtn');if(!box)return;
   var open=box.classList.toggle('on');
