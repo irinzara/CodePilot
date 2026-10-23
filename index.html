@@ -913,6 +913,7 @@ function showTestEditor(i){
   '<div class="field"><label>Test name</label><input class="input" id="tn" value="'+esc(old.name||'')+'" placeholder="Python / DSA / GenAI"></div>'+
   '<div class="field"><label>Topic</label><input class="input" id="tt" value="'+esc(old.topic||'')+'"></div>'+
   '<div class="row"><div class="field"><label>Marks obtained</label><input class="input" id="tMarks" type="number" min="0" step="any" value="'+(old.marks??'')+'"></div><div class="field"><label>Total marks</label><input class="input" id="tMaxMarks" type="number" min="1" step="any" value="'+(old.maxMarks??100)+'"></div></div>'+
+  '<div class="field"><label>Time taken (minutes)</label><input class="input" id="tActualDuration" type="number" min="0" max="600" step="1" value="'+(old.actualDurationMs!=null?Math.round(old.actualDurationMs/60000):'')+'" placeholder="e.g. 58"><small class="subtitle">Optional. Enter the actual time spent on this exam.</small></div>'+
   '<div class="row"><div class="field"><label>Question paper (PDF) '+(old.paperData?'— uploaded':'')+'</label><input class="input" id="tPaper" type="file" accept="application/pdf,.pdf"></div><div class="field"><label>Answer sheet (PDF) '+(old.answerData?'— uploaded':'')+'</label><input class="input" id="tAnswer" type="file" accept="application/pdf,.pdf"></div></div>'+
   '<div class="field"><label>Notes / mistakes</label><textarea class="input" id="tx" rows="3">'+esc(old.notes||'')+'</textarea></div>'+
   '<p class="subtitle">Upload PDFs to replace existing files. Each file must be under 4.5 MB.</p>'+
@@ -932,7 +933,9 @@ async function saveTest(i){
     var marks=$('tMarks').value,maxMarks=$('tMaxMarks').value;
     if(marks!==''&&+marks<0)throw new Error('Marks cannot be negative.');
     if(marks!==''&&maxMarks!==''&&+marks>+maxMarks)throw new Error('Marks obtained cannot exceed total marks.');
-    var data=Object.assign({},old,{date:$('td').value,name:$('tn').value||'Weekend test',topic:$('tt').value||'General',duration:Math.max(1,Math.min(600,parseInt($('tDuration').value,10)||60)),notes:$('tx').value||'',paperData:paperData,answerData:answerData,marks:marks,maxMarks:maxMarks});
+    var actualMins=$('tActualDuration').value;
+    if(actualMins!==''&&(!Number.isFinite(+actualMins)||+actualMins<0||+actualMins>600))throw new Error('Time taken must be between 0 and 600 minutes.');
+    var data=Object.assign({},old,{date:$('td').value,name:$('tn').value||'Weekend test',topic:$('tt').value||'General',duration:Math.max(1,Math.min(600,parseInt($('tDuration').value,10)||60)),notes:$('tx').value||'',paperData:paperData,answerData:answerData,marks:marks,maxMarks:maxMarks,actualDurationMs:actualMins===''?(old.actualDurationMs??null):Math.round(+actualMins*60000)});
     if(i>=0)S.tests[i]=data;else S.tests.push(Object.assign(data,{score:0,finished:false,startedAt:0,remainingMs:data.duration*60000}));
     save();closeModal();render();
   }catch(e){alert(e.message||'Could not save test.')}
