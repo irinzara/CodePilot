@@ -129,8 +129,8 @@
     <svg id="consistencyChart" class="consistency-chart" viewBox="0 0 900 290" preserveAspectRatio="none"></svg>
   </div>
   <div class="section">
-    <div class="section-head"><div><h2>Streak Calendar</h2><div class="subtitle">🔥 completed · 😔 incomplete · future dates remain unmarked</div></div><button class="btn ghost streak-more-btn" id="streakMoreBtn" onclick="toggleStreakCalendar()">View more</button></div>
-    <div class="card page-card"><div class="streak-grid" id="analyticsHeat"></div><div class="streak-legend">Past Saturdays and Sundays are automatically marked 🔥 as revision/test days.</div><div class="streak-expanded" id="streakExpanded"><div class="months-grid" id="monthCalendars"></div></div></div>
+    <div class="section-head"><div><h2>Streak Calendar</h2><div class="subtitle">🔥 completed · 😔 incomplete · weekends carry the streak only when Friday is completed</div></div><button class="btn ghost streak-more-btn" id="streakMoreBtn" onclick="toggleStreakCalendar()">View more</button></div>
+    <div class="card page-card"><div class="streak-grid" id="analyticsHeat"></div><div class="streak-legend">Weekends do not count as study days. Saturday and Sunday show 🔥 only when that week’s Friday streak was completed.</div><div class="streak-expanded" id="streakExpanded"><div class="months-grid" id="monthCalendars"></div></div></div>
   </div>
   <div class="section card page-card"><h2>Current Sprint</h2><p class="subtitle" id="analyticsSprint">No active sprint yet.</p><div class="bar"><i id="analyticsBar"></i></div></div>
 </section>
@@ -631,7 +631,14 @@ function isPastDate(d){
 }
 function streakStatus(d){
   if(!isPastDate(d))return 'future';
-  if(d.getDay()===0||d.getDay()===6)return 'complete';
+  var dow=d.getDay();
+  // Weekend days are not automatic completions. They carry continuity only
+  // when the immediately preceding Friday was a verified study day.
+  if(dow===6||dow===0){
+    var friday=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    friday.setDate(friday.getDate()-(dow===6?1:2));
+    return complete(key(friday))?'complete':'incomplete';
+  }
   return complete(key(d))?'complete':'incomplete';
 }
 function dMonth(year,month){
