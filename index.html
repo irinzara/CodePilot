@@ -614,7 +614,14 @@ function renderConsistency(){
 function showConsistencyTip(e,el){
   var tip=$('consistencyTip');
   tip.innerHTML='<strong>'+el.getAttribute('data-date')+'</strong><div class="tip-total">Total: '+el.getAttribute('data-total')+'</div><div class="tip-row"><span class="tip-label">Python / DSA</span><span>'+el.getAttribute('data-py')+'</span></div><div class="tip-row"><span class="tip-label">AI / ML / GenAI</span><span>'+el.getAttribute('data-ai')+'</span></div><div class="tip-row"><span class="tip-label">Project</span><span>'+el.getAttribute('data-pr')+'</span></div>';
-  tip.style.display='block';tip.style.left=(e.clientX+12)+'px';tip.style.top=(e.clientY-82)+'px';
+  tip.style.display='block';
+  // Measure after display, then keep the entire tooltip within the visible viewport.
+  var rect=tip.getBoundingClientRect(),pad=12,x=e.clientX+14,y=e.clientY-rect.height-14;
+  if(x+rect.width>window.innerWidth-pad)x=e.clientX-rect.width-14;
+  x=Math.max(pad,Math.min(x,window.innerWidth-rect.width-pad));
+  if(y<pad)y=e.clientY+18;
+  y=Math.max(pad,Math.min(y,window.innerHeight-rect.height-pad));
+  tip.style.left=x+'px';tip.style.top=y+'px';
 }
 function hideConsistencyTip(){$('consistencyTip').style.display='none'}
 function isPastDate(d){
